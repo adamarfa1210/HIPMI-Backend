@@ -837,6 +837,300 @@ describe("Milestone M3: UKM Profile Headless CMS & Media Pipeline Suite", () => 
       expect(pubHome.data.siteSettings.officialEmail).toBe("");
       expect(pubHome.data.stats.compartmentCount).toBe(0);
       expect(pubHome.data.stats.partnerCount).toBe(0);
+
+      // Restore baseline (no photos), add +2 per addable element, verify public API, then delete +2
+      await app.request("/api/cms/tentang", {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          eyebrow: "01 / TENTANG KAMI",
+          title: "Menggerakkan Ekosistem Wirausaha Mahasiswa Universitas Telkom",
+          description: "UKM HIPMI PT Universitas Telkom adalah wadah pengembangan pengusaha muda mahasiswa Universitas Telkom.",
+          secondaryDescription: null,
+          videoPosterSrc: null,
+          pillars: [
+            { title: "Inkubasi Bisnis Kader", description: "Pendampingan usaha mahasiswa dari validasi pasar hingga operasional bisnis.", sortOrder: 1 },
+            { title: "Jejaring Kemitraan", description: "Membuka akses kolaborasi lintas fakultas, alumni HIPMI, dan mitra industri.", sortOrder: 2 },
+            { title: "Kepemimpinan Wirausaha", description: "Menempa karakter kader melalui manajemen proyek kewirausahaan strategis.", sortOrder: 3 },
+          ],
+        }),
+      });
+      await app.request("/api/cms/settings", {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          secretariatAddress: "Student Center Universitas Telkom Bandung",
+          officialEmail: "sekretariat@hipmipt-telkom.org",
+          officialInstagram: "@hipmipt.telkom",
+          whatsappContactLabel: "Humas & Kemitraan",
+          whatsappContactUrl: "https://wa.me/6281234567890",
+          copyrightText: "© 2026 UKM HIPMI PT Telkom",
+        }),
+      });
+
+      const okkUpsert = await app.request("/api/cms/program-kerja", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          slug: "okk",
+          shortName: "OKK",
+          title: "BIDANG OKK",
+          eyebrow: "PROGRAM KERJA BIDANG OKK",
+          description: "Bidang Organisasi Kaderisasi dan Keanggotaan yang berfokus pada pengembangan kapasitas kader.",
+          compartmentSummary: "PSDM, ADKESKA",
+          sortOrder: 1,
+        }),
+      });
+      const okkId = (await okkUpsert.json()).data.id;
+
+      // Baseline 1 item per addable element
+      await app.request("/api/cms/hero-slides", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          title: "Hero Baseline Tanpa Foto",
+          subtitle: "Deskripsi hero baseline tanpa foto untuk verifikasi pemulihan data.",
+          imageSrc: null,
+          sortOrder: 1,
+        }),
+      });
+      await app.request("/api/cms/partners", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          name: "Mitra Baseline",
+          category: "Korporasi & BUMN",
+          scope: "Kolaborasi kunjungan industri dan sponsorship untuk kader kampus.",
+          period: "2026",
+          status: "Aktif",
+          imageSrc: null,
+        }),
+      });
+      await app.request("/api/cms/kader-businesses", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          businessName: "Bisnis Baseline",
+          sector: "Teknologi & Jasa",
+          description: "Usaha teknologi kader Universitas Telkom pada direktori bisnis kader.",
+          ownerLabel: "Kader Telkom",
+          verifiedLabel: "Terverifikasi",
+          imageSrc: null,
+          slotStatus: "pending-asset",
+        }),
+      });
+      await app.request("/api/cms/achievements", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          title: "Prestasi Baseline",
+          category: "Kompetisi Bisnis",
+          description: "Pencapaian kompetisi bisnis tingkat nasional oleh tim kader Telkom.",
+          recipientLabel: "Tim Telkom",
+          organizerLabel: "Penyelenggara 2026",
+          imageSrc: null,
+          slotStatus: "pending-asset",
+        }),
+      });
+      const baseCompRes = await app.request("/api/cms/program-kerja/compartment", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          bidangId: okkId,
+          code: "KOMP BASELINE",
+          name: "Kompartemen Baseline",
+          operationalPattern: "proker-only",
+          sortOrder: 1,
+        }),
+      });
+      const baseCompId = (await baseCompRes.json()).data.id;
+      await app.request("/api/cms/program-kerja/slide", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          compartmentId: baseCompId,
+          kind: "proker",
+          title: "Proker Baseline",
+          description: "Program kerja baseline kompartemen OKK tanpa gambar untuk pengujian.",
+          imageSrc: null,
+          slotStatus: "pending-asset",
+        }),
+      });
+      await app.request("/api/cms/testimonials", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          category: "Kader & Alumni",
+          quote: "Kutipan testimoni baseline yang terverifikasi untuk halaman publik web.",
+          authorLabel: "Alumni Baseline",
+          roleOrOrg: "Founder Baseline",
+          verified: true,
+        }),
+      });
+      await app.request("/api/cms/announcements", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          title: "Info Baseline",
+          content: "Konten pengumuman baseline untuk navbar web UKM.",
+          targetAudience: "PUBLIC",
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 86400000).toISOString(),
+        }),
+      });
+
+      // Add +2 to each addable element & track IDs
+      const addedIds: Record<string, string[]> = {
+        hero: [],
+        partner: [],
+        bisnis: [],
+        prestasi: [],
+        comp: [],
+        slide: [],
+        testi: [],
+        ann: [],
+      };
+      for (const idx of [1, 2]) {
+        const h = await app.request("/api/cms/hero-slides", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            title: `Hero Tambahan Ke-${idx}`,
+            subtitle: `Deskripsi hero tambahan ke-${idx} yang memenuhi batas minimum karakter.`,
+            imageSrc: null,
+            sortOrder: idx + 1,
+          }),
+        });
+        addedIds.hero.push((await h.json()).data.id);
+
+        const p = await app.request("/api/cms/partners", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            name: `Mitra Tambahan ${idx}`,
+            category: "Mitra Strategis",
+            scope: `Ruang lingkup mitra tambahan ${idx} untuk pengujian penambahan dua item.`,
+            period: "2026",
+            status: "Aktif",
+            imageSrc: null,
+          }),
+        });
+        addedIds.partner.push((await p.json()).data.id);
+
+        const b = await app.request("/api/cms/kader-businesses", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            businessName: `Bisnis Tambahan ${idx}`,
+            sector: "Kuliner / F&B",
+            description: `Deskripsi bisnis tambahan ${idx} yang cukup panjang untuk validasi.`,
+            ownerLabel: `Owner ${idx}`,
+            verifiedLabel: "Terverifikasi",
+            imageSrc: null,
+            slotStatus: "pending-asset",
+          }),
+        });
+        addedIds.bisnis.push((await b.json()).data.id);
+
+        const a = await app.request("/api/cms/achievements", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            title: `Prestasi Tambahan ${idx}`,
+            category: "Rekognisi",
+            description: `Deskripsi prestasi tambahan ${idx} yang cukup panjang untuk validasi.`,
+            recipientLabel: `Peraih ${idx}`,
+            organizerLabel: `Penyelenggara ${idx}`,
+            imageSrc: null,
+            slotStatus: "pending-asset",
+          }),
+        });
+        addedIds.prestasi.push((await a.json()).data.id);
+
+        const c = await app.request("/api/cms/program-kerja/compartment", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            bidangId: okkId,
+            code: `KOMP ADD ${idx}`,
+            name: `Kompartemen Add ${idx}`,
+            operationalPattern: "proker-only",
+            sortOrder: idx + 1,
+          }),
+        });
+        const compId = (await c.json()).data.id;
+        addedIds.comp.push(compId);
+
+        const s = await app.request("/api/cms/program-kerja/slide", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            compartmentId: baseCompId,
+            kind: "proker",
+            title: `Slide Tambahan ${idx}`,
+            description: `Deskripsi slide tambahan ${idx} yang memenuhi batas minimum karakter.`,
+            imageSrc: null,
+            slotStatus: "pending-asset",
+          }),
+        });
+        addedIds.slide.push((await s.json()).data.id);
+
+        const t = await app.request("/api/cms/testimonials", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            category: "Mitra Kolaborasi",
+            quote: `Kutipan testimoni tambahan ${idx} yang cukup panjang untuk lolos validasi minimal.`,
+            authorLabel: `Penulis Add ${idx}`,
+            roleOrOrg: `Instansi Add ${idx}`,
+            verified: true,
+          }),
+        });
+        addedIds.testi.push((await t.json()).data.id);
+
+        const an = await app.request("/api/cms/announcements", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            title: `Berita Add ${idx}`,
+            content: `Isi berita tambahan ke-${idx} untuk ticker publik.`,
+            targetAudience: "PUBLIC",
+            startDate: new Date().toISOString(),
+            endDate: new Date(Date.now() + 86400000).toISOString(),
+          }),
+        });
+        addedIds.ann.push((await an.json()).data.id);
+      }
+
+      const afterAddHome = await (await app.request("/api/public/home")).json();
+      expect(afterAddHome.data.heroSlides.length).toBe(3);
+      expect(afterAddHome.data.announcements.length).toBe(3);
+      expect(afterAddHome.data.stats.partnerCount).toBe(3);
+      expect(afterAddHome.data.stats.compartmentCount).toBe(3);
+      expect(afterAddHome.data.stats.prokerJobdeskCount).toBe(3);
+      expect((await (await app.request("/api/public/kader-businesses")).json()).data.length).toBe(3);
+      expect((await (await app.request("/api/public/achievements")).json()).data.length).toBe(3);
+      expect((await (await app.request("/api/public/testimonials")).json()).data.length).toBe(3);
+
+      // Delete all +2 added items
+      for (const id of addedIds.hero) await app.request(`/api/cms/hero-slides/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.partner) await app.request(`/api/cms/partners/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.bisnis) await app.request(`/api/cms/kader-businesses/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.prestasi) await app.request(`/api/cms/achievements/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.slide) await app.request(`/api/cms/program-kerja/slide/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.comp) await app.request(`/api/cms/program-kerja/compartment/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.testi) await app.request(`/api/cms/testimonials/${id}`, { method: "DELETE", headers: authHeaders() });
+      for (const id of addedIds.ann) await app.request(`/api/cms/announcements/${id}`, { method: "DELETE", headers: authHeaders() });
+
+      const finalHome = await (await app.request("/api/public/home")).json();
+      expect(finalHome.data.heroSlides.length).toBe(1);
+      expect(finalHome.data.announcements.length).toBe(1);
+      expect(finalHome.data.stats.partnerCount).toBe(1);
+      expect(finalHome.data.stats.compartmentCount).toBe(1);
+      expect(finalHome.data.stats.prokerJobdeskCount).toBe(1);
+      expect((await (await app.request("/api/public/kader-businesses")).json()).data.length).toBe(1);
+      expect((await (await app.request("/api/public/achievements")).json()).data.length).toBe(1);
+      expect((await (await app.request("/api/public/testimonials")).json()).data.length).toBe(1);
     });
   });
 });
