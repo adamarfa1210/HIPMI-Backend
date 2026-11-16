@@ -22,11 +22,37 @@ export class PublicService {
    * Aggregates all homepage payload in one call
    */
   static async getHomeData() {
-    // 1. Hero slides
-    const rawSlides = await db.query.heroSlides.findMany({
-      where: eq(heroSlides.isPublished, true),
-      orderBy: [asc(heroSlides.sortOrder), desc(heroSlides.createdAt)],
-    });
+    // Run independent public queries in parallel to minimize round-trips to Supabase
+    const [
+      rawSlides,
+      tentang,
+      allBidangs,
+      allCompartments,
+      allSlides,
+      allPartners,
+      rawAnnouncements,
+      settings,
+    ] = await Promise.all([
+      db.query.heroSlides.findMany({
+        where: eq(heroSlides.isPublished, true),
+        orderBy: [asc(heroSlides.sortOrder), desc(heroSlides.createdAt)],
+      }),
+      CmsService.getTentang(),
+      db.query.workProgramBidangs.findMany({
+        orderBy: [asc(workProgramBidangs.sortOrder)],
+      }),
+      db.query.compartmentStages.findMany(),
+      db.query.programSlides.findMany(),
+      db.query.partners.findMany({
+        where: eq(partners.isPublished, true),
+      }),
+      db.query.announcements.findMany({
+        where: eq(announcements.isActive, true),
+        orderBy: [desc(announcements.createdAt)],
+      }),
+      CmsService.getSettings(),
+    ]);
+
     const totalSlides = rawSlides.length;
     const slides = rawSlides.map((s, idx) => ({
       id: s.id,
@@ -37,19 +63,6 @@ export class PublicService {
       imageAlt: s.imageAlt,
       sortOrder: s.sortOrder,
     }));
-
-    // 2. Tentang & Pillars
-    const tentang = await CmsService.getTentang();
-
-    // 3. Stats calculation
-    const allBidangs = await db.query.workProgramBidangs.findMany({
-      orderBy: [asc(workProgramBidangs.sortOrder)],
-    });
-    const allCompartments = await db.query.compartmentStages.findMany();
-    const allSlides = await db.query.programSlides.findMany();
-    const allPartners = await db.query.partners.findMany({
-      where: eq(partners.isPublished, true),
-    });
 
     const stats = {
       bidangCount: allBidangs.length || 4,
@@ -66,12 +79,6 @@ export class PublicService {
       compartmentSummary: b.compartmentSummary,
     }));
 
-    // 4. Public announcements
-    const now = new Date();
-    const rawAnnouncements = await db.query.announcements.findMany({
-      where: eq(announcements.isActive, true),
-      orderBy: [desc(announcements.createdAt)],
-    });
     const activeAnnouncements = rawAnnouncements
       .filter((a) => a.targetAudience === "PUBLIC" || a.targetAudience === "BOTH")
       .map((a) => ({
@@ -81,9 +88,6 @@ export class PublicService {
         startDate: a.startDate,
         endDate: a.endDate,
       }));
-
-    // 5. Site settings
-    const settings = await CmsService.getSettings();
 
     return {
       heroSlides: slides,

@@ -41,7 +41,7 @@ if (isTest && !process.env.TEST_DATABASE_URL) {
 } else {
   const targetUrl = isTest && process.env.TEST_DATABASE_URL ? process.env.TEST_DATABASE_URL : dbUrl;
   const pgClient = postgres(targetUrl, {
-    max: 10,
+    max: process.env.VERCEL ? 2 : 10,
     idle_timeout: 20,
     connect_timeout: 10,
   });

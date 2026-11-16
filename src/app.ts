@@ -33,10 +33,11 @@ app.use(
   cors({
     origin: (origin) => {
       const allowed = [
-        process.env.ERP_FRONTEND_URL,
-        process.env.PUBLIC_WEB_URL,
+        process.env.ERP_FRONTEND_URL?.replace(/\/$/, ""),
+        process.env.PUBLIC_WEB_URL?.replace(/\/$/, ""),
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:3002",
       ].filter(Boolean) as string[];
       return !origin || allowed.includes(origin) ? origin : allowed[0];
     },
