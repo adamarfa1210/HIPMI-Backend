@@ -51,6 +51,19 @@ app.use(
 app.onError(errorHandler);
 app.notFound(notFoundHandler);
 
+// Root banner & Health check
+app.get("/", (c) =>
+  c.json({
+    success: true,
+    service: "hipmi-pt-telkom-api",
+    status: "ok",
+    endpoints: {
+      health: "/health",
+      publicHome: "/api/public/home",
+    },
+  })
+);
+
 // Health check
 app.get("/health", (c) =>
   c.json({
