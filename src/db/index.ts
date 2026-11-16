@@ -47,8 +47,8 @@ if (isTest && !process.env.TEST_DATABASE_URL) {
       : rawTargetUrl;
   const usesTxPooler = targetUrl.includes(":6543/");
   const pgClient = postgres(targetUrl, {
-    max: process.env.VERCEL ? (usesTxPooler ? 3 : 1) : 10,
-    idle_timeout: process.env.VERCEL ? 5 : 20,
+    max: usesTxPooler ? 10 : (process.env.VERCEL ? 1 : 10),
+    idle_timeout: 20,
     connect_timeout: 10,
     ...(usesTxPooler ? { prepare: false } : {}),
   });
