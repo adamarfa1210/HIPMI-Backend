@@ -35,6 +35,7 @@ app.use(
       const allowed = [
         process.env.ERP_FRONTEND_URL?.replace(/\/$/, ""),
         process.env.PUBLIC_WEB_URL?.replace(/\/$/, ""),
+        "https://hipmi-pt-telkom-erp.vercel.app",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3002",
