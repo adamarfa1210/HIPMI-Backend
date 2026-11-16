@@ -64,14 +64,16 @@ export class PublicService {
       sortOrder: s.sortOrder,
     }));
 
+    const activeBidangs = allBidangs.filter((b) => Boolean(b.title || b.description || b.compartmentSummary));
+
     const stats = {
-      bidangCount: allBidangs.length || 4,
+      bidangCount: activeBidangs.length,
       compartmentCount: allCompartments.length,
       prokerJobdeskCount: allSlides.length,
       partnerCount: allPartners.length,
     };
 
-    const bidangs = allBidangs.map((b) => ({
+    const bidangs = activeBidangs.map((b) => ({
       id: b.id,
       slug: b.slug,
       shortName: b.shortName,

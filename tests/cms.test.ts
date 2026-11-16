@@ -730,4 +730,113 @@ describe("Milestone M3: UKM Profile Headless CMS & Media Pipeline Suite", () => 
       expect(latestCall.body.tags).toContain("home");
     });
   });
+
+  // =========================================================================
+  // 8. Photo Removal, Full Text Clear -> Empty Public API -> Restore Cycle
+  // =========================================================================
+  describe("8. Photo Removal & Full Clear -> Restore Cycle", () => {
+    it("allows removing photos (imageSrc: null) across Hero, Tentang, Partners, Bisnis, Prestasi, and Slides", async () => {
+      const heroRes = await app.request("/api/cms/hero-slides", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          title: "Hero Tanpa Foto Pertama",
+          subtitle: "Deskripsi hero slide tanpa gambar untuk memastikan mode teks tetap valid.",
+          imageSrc: null,
+          imageAlt: null,
+          sortOrder: 1,
+          isPublished: true,
+        }),
+      });
+      expect(heroRes.status).toBe(201);
+      const heroJson = await heroRes.json();
+      expect(heroJson.data.imageSrc).toBeNull();
+
+      const partnerRes = await app.request("/api/cms/partners", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          name: "Mitra Tanpa Logo",
+          category: "Mitra Strategis",
+          scope: "Kolaborasi ekosistem kewirausahaan kampus Telkom tanpa logo.",
+          period: "Periode 2026",
+          status: "Aktif",
+          imageSrc: null,
+          imageAlt: null,
+          isPublished: true,
+        }),
+      });
+      expect(partnerRes.status).toBe(201);
+      const partnerJson = await partnerRes.json();
+      expect(partnerJson.data.imageSrc).toBeNull();
+
+      const tentangClearPoster = await app.request("/api/cms/tentang", {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ videoPosterSrc: null }),
+      });
+      expect(tentangClearPoster.status).toBe(200);
+      const tentangJson = await tentangClearPoster.json();
+      expect(tentangJson.data.videoPosterSrc).toBeNull();
+    });
+
+    it("clears Tentang, Settings, Bidang, and all list items so /api/public/* returns empty/cleared state", async () => {
+      // Clear Tentang & Settings
+      const delTentang = await app.request("/api/cms/tentang", {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      expect(delTentang.status).toBe(200);
+
+      const delSettings = await app.request("/api/cms/settings", {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      expect(delSettings.status).toBe(200);
+
+      // Delete all Hero Slides, Partners, Bisnis, Prestasi, Testimonials, Announcements
+      for (const ep of [
+        "/api/cms/hero-slides",
+        "/api/cms/partners",
+        "/api/cms/kader-businesses",
+        "/api/cms/achievements",
+        "/api/cms/testimonials",
+        "/api/cms/announcements",
+      ]) {
+        const listRes = await app.request(ep, { headers: authHeaders() });
+        const listJson = await listRes.json();
+        for (const item of listJson.data || []) {
+          const del = await app.request(`${ep}/${item.id}`, {
+            method: "DELETE",
+            headers: authHeaders(),
+          });
+          expect(del.status).toBe(200);
+        }
+      }
+
+      // Clear all Bidangs (deletes compartments & slides and clears bidang texts)
+      const progRes = await app.request("/api/cms/program-kerja", { headers: authHeaders() });
+      const progJson = await progRes.json();
+      for (const b of progJson.data || []) {
+        const delB = await app.request(`/api/cms/program-kerja/bidang/${b.id}`, {
+          method: "DELETE",
+          headers: authHeaders(),
+        });
+        expect(delB.status).toBe(200);
+      }
+
+      // Verify /api/public/home reflects completely cleared/empty state
+      const pubHomeRes = await app.request("/api/public/home");
+      expect(pubHomeRes.status).toBe(200);
+      const pubHome = await pubHomeRes.json();
+      expect(pubHome.data.heroSlides).toEqual([]);
+      expect(pubHome.data.tentang.title).toBe("");
+      expect(pubHome.data.tentang.pillars).toEqual([]);
+      expect(pubHome.data.bidangs).toEqual([]);
+      expect(pubHome.data.announcements).toEqual([]);
+      expect(pubHome.data.siteSettings.officialEmail).toBe("");
+      expect(pubHome.data.stats.compartmentCount).toBe(0);
+      expect(pubHome.data.stats.partnerCount).toBe(0);
+    });
+  });
 });

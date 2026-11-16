@@ -45,12 +45,30 @@ export const optionalPlainTextSchema = (
       message: `${fieldName} maksimal ${max} karakter (batas keras)`,
     });
 
+export const optionalMediaUrlSchema = z
+  .union([
+    z
+      .string()
+      .max(255, "URL media maksimal 255 karakter")
+      .refine(
+        (val) =>
+          val === "" ||
+          val.startsWith("/assets/") ||
+          val.startsWith("/uploads/") ||
+          z.string().url().safeParse(val).success,
+        { message: "URL gambar tidak valid" }
+      ),
+    z.null(),
+  ])
+  .optional()
+  .transform((val) => (val === "" ? null : val));
+
 // 1. Hero Slide Schema
 export const heroSlideSchema = z.object({
   title: plainTextSchema(10, 45, "title"),
   subtitle: plainTextSchema(40, 180, "subtitle"),
-  imageSrc: z.string().max(255, "imageSrc maksimal 255 karakter").url("URL gambar tidak valid"),
-  imageAlt: plainTextSchema(10, 140, "imageAlt"),
+  imageSrc: optionalMediaUrlSchema,
+  imageAlt: optionalPlainTextSchema(0, 140, "imageAlt"),
   indexLabel: z.string().max(10, "indexLabel maksimal 10 karakter").optional().nullable(),
   sortOrder: z.number().int().optional().default(0),
   isPublished: z.boolean().optional().default(true),
@@ -72,8 +90,8 @@ export const tentangProfileSchema = z.object({
   title: plainTextSchema(15, 70, "title"),
   description: plainTextSchema(60, 320, "description"),
   secondaryDescription: optionalPlainTextSchema(60, 280, "secondaryDescription"),
-  videoPosterSrc: z.string().max(255).url().optional().nullable(),
-  videoUrl: z.string().max(255).url().optional().nullable(),
+  videoPosterSrc: optionalMediaUrlSchema,
+  videoUrl: optionalMediaUrlSchema,
   pillars: z
     .array(pillarItemSchema)
     .length(3, "Tentang harus memiliki tepat 3 pilar aktif")
@@ -102,9 +120,9 @@ export const partnerSchema = z.object({
   scope: plainTextSchema(30, 160, "scope"),
   period: plainTextSchema(4, 60, "period"),
   status: plainTextSchema(4, 30, "status"),
-  imageAlt: plainTextSchema(10, 140, "imageAlt"),
-  imageSrc: z.string().max(255).url().optional(),
-  logoUrl: z.string().max(255).url().optional(),
+  imageAlt: optionalPlainTextSchema(0, 140, "imageAlt"),
+  imageSrc: optionalMediaUrlSchema,
+  logoUrl: optionalMediaUrlSchema,
   sortOrder: z.number().int().optional().default(0),
   isPublished: z.boolean().optional().default(true),
 });
@@ -122,9 +140,9 @@ export const bisnisKaderSchema = z.object({
   description: plainTextSchema(40, 180, "description"),
   ownerLabel: plainTextSchema(5, 45, "ownerLabel"),
   verifiedLabel: plainTextSchema(5, 40, "verifiedLabel"),
-  imageAlt: optionalPlainTextSchema(10, 140, "imageAlt"),
-  imageSrc: z.string().max(255).url().optional().nullable(),
-  imageUrl: z.string().max(255).url().optional().nullable(),
+  imageAlt: optionalPlainTextSchema(0, 140, "imageAlt"),
+  imageSrc: optionalMediaUrlSchema,
+  imageUrl: optionalMediaUrlSchema,
   slotStatus: z.enum(["ready", "pending-asset"]).optional().default("ready"),
   sortOrder: z.number().int().optional().default(0),
   isPublished: z.boolean().optional().default(true),
@@ -142,9 +160,9 @@ export const prestasiSchema = z.object({
   description: plainTextSchema(40, 180, "description"),
   recipientLabel: plainTextSchema(5, 50, "recipientLabel"),
   organizerLabel: plainTextSchema(5, 55, "organizerLabel"),
-  imageAlt: optionalPlainTextSchema(10, 140, "imageAlt"),
-  imageSrc: z.string().max(255).url().optional().nullable(),
-  imageUrl: z.string().max(255).url().optional().nullable(),
+  imageAlt: optionalPlainTextSchema(0, 140, "imageAlt"),
+  imageSrc: optionalMediaUrlSchema,
+  imageUrl: optionalMediaUrlSchema,
   slotStatus: z.enum(["ready", "pending-asset"]).optional().default("ready"),
   sortOrder: z.number().int().optional().default(0),
   isPublished: z.boolean().optional().default(true),
@@ -199,8 +217,8 @@ export const programSlideSchema = z.object({
   title: plainTextSchema(4, 45, "title"),
   description: plainTextSchema(40, 200, "description"),
   mediaSourceLabel: optionalPlainTextSchema(0, 50, "mediaSourceLabel"),
-  imageAlt: optionalPlainTextSchema(10, 140, "imageAlt"),
-  imageSrc: z.string().max(255).url().optional().nullable(),
+  imageAlt: optionalPlainTextSchema(0, 140, "imageAlt"),
+  imageSrc: optionalMediaUrlSchema,
   slotStatus: z.enum(["ready", "pending-asset"]).optional().default("ready"),
   sortOrder: z.number().int().optional().default(0),
 });

@@ -29,7 +29,7 @@ export class RevalidateService {
         "x-revalidate-secret": revalidateSecret,
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(8000),
     })
       .then((res) => {
         if (!res.ok) {

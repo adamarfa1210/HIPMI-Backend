@@ -93,6 +93,11 @@ cmsRouter.put(
   }
 );
 
+cmsRouter.delete("/settings", rbacMiddleware("cms", "delete"), async (c) => {
+  const cleared = await CmsService.clearSettings();
+  return c.json({ success: true, message: "Pengaturan situs berhasil dikosongkan", data: cleared });
+});
+
 // ===========================================================================
 // 2. Announcements
 // ===========================================================================
@@ -220,6 +225,11 @@ cmsRouter.put(
     return c.json({ success: true, message: "3 Pilar aktif berhasil diperbarui", data: updated });
   }
 );
+
+cmsRouter.delete("/tentang", rbacMiddleware("cms", "delete"), async (c) => {
+  const cleared = await CmsService.clearTentang();
+  return c.json({ success: true, message: "Profil Tentang & Pilar berhasil dikosongkan", data: cleared });
+});
 
 // ===========================================================================
 // 5. Partnerships / Mitra
@@ -450,6 +460,12 @@ cmsRouter.patch(
     return c.json({ success: true, message: "Bidang berhasil diperbarui", data: updated });
   }
 );
+
+cmsRouter.delete("/program-kerja/bidang/:id", rbacMiddleware("cms", "delete"), async (c) => {
+  const id = c.req.param("id")!;
+  const cleared = await CmsService.clearBidangContent(id);
+  return c.json({ success: true, message: "Konten bidang berhasil dikosongkan", data: cleared });
+});
 
 cmsRouter.post(
   "/program-kerja/compartment",

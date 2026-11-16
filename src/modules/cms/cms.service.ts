@@ -52,6 +52,27 @@ export class CmsService {
     return updated;
   }
 
+  static async clearSettings() {
+    await this.getSettings();
+    const [cleared] = await db
+      .update(siteSettings)
+      .set({
+        secretariatAddress: "",
+        officialEmail: "",
+        officialInstagram: "",
+        whatsappContactLabel: "",
+        whatsappContactUrl: "",
+        copyrightText: "",
+        googleDocsTemplateUrl: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(siteSettings.id, 1))
+      .returning();
+
+    await RevalidateService.triggerRevalidation(["settings", "home"]);
+    return cleared;
+  }
+
   // =========================================================================
   // 2. Announcements
   // =========================================================================
@@ -135,9 +156,14 @@ export class CmsService {
   }
 
   static async createHeroSlide(data: any) {
+    const { slotStatus: _slotStatus, ...slideData } = data;
     const [created] = await db
       .insert(heroSlides)
-      .values(data)
+      .values({
+        ...slideData,
+        imageSrc: slideData.imageSrc ?? null,
+        imageAlt: slideData.imageAlt ?? null,
+      })
       .returning();
 
     await RevalidateService.triggerRevalidation(["home", "hero"]);
@@ -145,9 +171,10 @@ export class CmsService {
   }
 
   static async updateHeroSlide(id: string, data: any) {
+    const { slotStatus: _slotStatus, ...slideData } = data;
     const [updated] = await db
       .update(heroSlides)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...slideData, updatedAt: new Date() })
       .where(eq(heroSlides.id, id))
       .returning();
 
@@ -237,6 +264,27 @@ export class CmsService {
     return await this.getTentang();
   }
 
+  static async clearTentang() {
+    await this.getTentang();
+    await db
+      .update(tentangProfile)
+      .set({
+        eyebrow: "",
+        title: "",
+        description: "",
+        secondaryDescription: null,
+        videoPosterSrc: null,
+        videoUrl: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(tentangProfile.id, 1));
+
+    await db.delete(tentangPillars);
+
+    await RevalidateService.triggerRevalidation(["home", "tentang"]);
+    return await this.getTentang();
+  }
+
   static async replacePillars(pillarsList: { title: string; description: string; sortOrder?: number }[]) {
     if (pillarsList.length !== 3) {
       throw new AppError(422, "UNPROCESSABLE_ENTITY", "Tentang harus memiliki tepat 3 pilar aktif");
@@ -279,12 +327,14 @@ export class CmsService {
   }
 
   static async createPartner(data: any) {
-    const imageSrc = data.imageSrc || data.logoUrl || "https://storage.hipmi-pt.id/default-partner.png";
+    const { logoUrl, ...rest } = data;
+    const imageSrc = data.imageSrc !== undefined ? data.imageSrc : (logoUrl ?? null);
     const [created] = await db
       .insert(partners)
       .values({
-        ...data,
+        ...rest,
         imageSrc,
+        imageAlt: rest.imageAlt ?? null,
       })
       .returning();
 
@@ -293,9 +343,10 @@ export class CmsService {
   }
 
   static async updatePartner(id: string, data: any) {
-    const updatePayload = { ...data, updatedAt: new Date() };
-    if (data.logoUrl && !data.imageSrc) {
-      updatePayload.imageSrc = data.logoUrl;
+    const { logoUrl, ...rest } = data;
+    const updatePayload: any = { ...rest, updatedAt: new Date() };
+    if (logoUrl !== undefined && data.imageSrc === undefined) {
+      updatePayload.imageSrc = logoUrl;
     }
 
     const [updated] = await db
@@ -365,10 +416,10 @@ export class CmsService {
 
   static async updateKaderBusiness(id: string, data: any) {
     const updatePayload: any = { ...data, updatedAt: new Date() };
-    if (data.imageUrl && !data.imageSrc) {
+    if (data.imageUrl !== undefined && data.imageSrc === undefined) {
       updatePayload.imageSrc = data.imageUrl;
     }
-    if (data.imageSrc && !data.imageUrl) {
+    if (data.imageSrc !== undefined && data.imageUrl === undefined) {
       updatePayload.imageUrl = data.imageSrc;
     }
     if (data.ownerName && !data.ownerLabel) {
@@ -424,12 +475,14 @@ export class CmsService {
   }
 
   static async createAchievement(data: any) {
-    const imageSrc = data.imageSrc || data.imageUrl || null;
+    const imageSrc = data.imageSrc !== undefined ? data.imageSrc : (data.imageUrl ?? null);
+    const imageUrl = data.imageUrl !== undefined ? data.imageUrl : imageSrc;
     const [created] = await db
       .insert(achievements)
       .values({
         ...data,
         imageSrc,
+        imageUrl,
       })
       .returning();
 
@@ -438,9 +491,12 @@ export class CmsService {
   }
 
   static async updateAchievement(id: string, data: any) {
-    const updatePayload = { ...data, updatedAt: new Date() };
-    if (data.imageUrl && !data.imageSrc) {
+    const updatePayload: any = { ...data, updatedAt: new Date() };
+    if (data.imageUrl !== undefined && data.imageSrc === undefined) {
       updatePayload.imageSrc = data.imageUrl;
+    }
+    if (data.imageSrc !== undefined && data.imageUrl === undefined) {
+      updatePayload.imageUrl = data.imageSrc;
     }
 
     const [updated] = await db
@@ -671,7 +727,7 @@ export class CmsService {
       .values(data)
       .returning();
 
-    await RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "program-okk", "program-medkominfo", "program-eksternal", "program-ekraf", "home"]);
     return created;
   }
 
@@ -686,7 +742,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Kompartemen tidak ditemukan");
     }
 
-    await RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "program-okk", "program-medkominfo", "program-eksternal", "program-ekraf", "home"]);
     return updated;
   }
 
@@ -700,8 +756,33 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Kompartemen tidak ditemukan");
     }
 
-    await RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "program-okk", "program-medkominfo", "program-eksternal", "program-ekraf", "home"]);
     return deleted;
+  }
+
+  static async clearBidangContent(id: string) {
+    const existing = await db.query.workProgramBidangs.findFirst({
+      where: eq(workProgramBidangs.id, id),
+    });
+    if (!existing) {
+      throw new AppError(404, "NOT_FOUND", "Bidang tidak ditemukan");
+    }
+
+    await db.delete(compartmentStages).where(eq(compartmentStages.bidangId, id));
+
+    const [updated] = await db
+      .update(workProgramBidangs)
+      .set({
+        title: "",
+        eyebrow: "",
+        description: "",
+        compartmentSummary: "",
+      })
+      .where(eq(workProgramBidangs.id, id))
+      .returning();
+
+    await RevalidateService.triggerRevalidation(["programs", `program-${existing.slug}`, "home"]);
+    return updated;
   }
 
   static async createProgramSlide(data: any) {
@@ -710,7 +791,7 @@ export class CmsService {
       .values(data)
       .returning();
 
-    await RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "program-okk", "program-medkominfo", "program-eksternal", "program-ekraf", "home"]);
     return created;
   }
 
@@ -725,7 +806,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Program slide tidak ditemukan");
     }
 
-    await RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "program-okk", "program-medkominfo", "program-eksternal", "program-ekraf", "home"]);
     return updated;
   }
 
@@ -739,7 +820,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Program slide tidak ditemukan");
     }
 
-    await RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "program-okk", "program-medkominfo", "program-eksternal", "program-ekraf", "home"]);
     return deleted;
   }
 }
