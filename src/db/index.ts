@@ -39,11 +39,18 @@ if (isTest && !process.env.TEST_DATABASE_URL) {
   rawClient = pgliteClient;
   dbInstance = drizzlePglite(pgliteClient, { schema });
 } else {
-  const targetUrl = isTest && process.env.TEST_DATABASE_URL ? process.env.TEST_DATABASE_URL : dbUrl;
+  const rawTargetUrl = isTest && process.env.TEST_DATABASE_URL ? process.env.TEST_DATABASE_URL : dbUrl;
+  // On Vercel Serverless, prefer Supabase Transaction Pooler (:6543) to avoid Session Pooler max_clients (15) exhaustion
+  const targetUrl =
+    process.env.VERCEL && rawTargetUrl.includes(".pooler.supabase.com:5432/")
+      ? rawTargetUrl.replace(".pooler.supabase.com:5432/", ".pooler.supabase.com:6543/")
+      : rawTargetUrl;
+  const usesTxPooler = targetUrl.includes(":6543/");
   const pgClient = postgres(targetUrl, {
-    max: process.env.VERCEL ? 2 : 10,
-    idle_timeout: 20,
+    max: process.env.VERCEL ? 1 : 10,
+    idle_timeout: process.env.VERCEL ? 5 : 20,
     connect_timeout: 10,
+    ...(usesTxPooler ? { prepare: false } : {}),
   });
   rawClient = pgClient;
   dbInstance = drizzlePg(pgClient, { schema });
