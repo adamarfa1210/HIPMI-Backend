@@ -1,0 +1,46 @@
+{
+  "name": "hipmi-pt-telkom-api",
+  "version": "1.0.0",
+  "description": "Unified Backend Management System & Headless API for HIPMI PT Telkom University",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "db:generate": "npm run build && drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seeds/initial.seed.ts",
+    "db:seed:cms": "tsx src/db/seeds/cms.seed.ts",
+    "test": "vitest run --pool=forks --poolOptions.forks.singleFork",
+    "test:watch": "vitest --pool=forks --poolOptions.forks.singleFork"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@hono/node-server": "^1.13.8",
+    "@hono/zod-validator": "^0.4.3",
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.39.3",
+    "hono": "^4.7.2",
+    "jose": "^5.9.6",
+    "pdfkit": "^0.20.2",
+    "postgres": "^3.4.5",
+    "sharp": "^0.35.5",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.16",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.13.4",
+    "@types/pdfkit": "^0.17.7",
+    "drizzle-kit": "^0.30.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

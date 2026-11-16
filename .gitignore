@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables (NEVER commit secrets)
+.env
+.env*.local
+
+# Local database & uploaded media
+.local-db/
+uploads/
+
+# Logs & OS
+*.log
+.DS_Store
