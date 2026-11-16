@@ -11,7 +11,8 @@ export class RevalidateService {
    */
   static triggerRevalidation(tags: string[]): Promise<boolean> {
     const publicWebUrl = process.env.PUBLIC_WEB_URL || "https://hipmipttelkom.vercel.app";
-    const revalidateSecret = process.env.REVALIDATE_SECRET || "hipmi-secret-token-xyz-2026";
+    const revalidateSecret =
+      process.env.REVALIDATE_SECRET || "hipmi-revalidate-webhook-secret-token";
     const targetUrl = `${publicWebUrl.replace(/\/$/, "")}/api/revalidate`;
 
     const payload: RevalidatePayload = {
@@ -20,7 +21,7 @@ export class RevalidateService {
       timestamp: Date.now(),
     };
 
-    // Return promise but catch errors so CMS mutations never fail if Next.js webhook is unavailable
+    // Bounded timeout so callers can await before Vercel serverless freezes the runtime
     return fetch(targetUrl, {
       method: "POST",
       headers: {
@@ -28,6 +29,7 @@ export class RevalidateService {
         "x-revalidate-secret": revalidateSecret,
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(2500),
     })
       .then((res) => {
         if (!res.ok) {

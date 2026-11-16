@@ -48,7 +48,7 @@ export class CmsService {
       .where(eq(siteSettings.id, 1))
       .returning();
 
-    RevalidateService.triggerRevalidation(["settings", "home"]);
+    await RevalidateService.triggerRevalidation(["settings", "home"]);
     return updated;
   }
 
@@ -81,7 +81,7 @@ export class CmsService {
       })
       .returning();
 
-    RevalidateService.triggerRevalidation(["announcements", "home"]);
+    await RevalidateService.triggerRevalidation(["announcements", "home"]);
     return created;
   }
 
@@ -100,7 +100,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Pengumuman tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["announcements", "home"]);
+    await RevalidateService.triggerRevalidation(["announcements", "home"]);
     return updated;
   }
 
@@ -114,7 +114,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Pengumuman tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["announcements", "home"]);
+    await RevalidateService.triggerRevalidation(["announcements", "home"]);
     return deleted;
   }
 
@@ -140,7 +140,7 @@ export class CmsService {
       .values(data)
       .returning();
 
-    RevalidateService.triggerRevalidation(["home", "hero"]);
+    await RevalidateService.triggerRevalidation(["home", "hero"]);
     return created;
   }
 
@@ -155,7 +155,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Hero slide tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["home", "hero"]);
+    await RevalidateService.triggerRevalidation(["home", "hero"]);
     return updated;
   }
 
@@ -169,7 +169,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Hero slide tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["home", "hero"]);
+    await RevalidateService.triggerRevalidation(["home", "hero"]);
     return deleted;
   }
 
@@ -181,7 +181,7 @@ export class CmsService {
         .where(eq(heroSlides.id, item.id));
     }
 
-    RevalidateService.triggerRevalidation(["home", "hero"]);
+    await RevalidateService.triggerRevalidation(["home", "hero"]);
     return await this.getHeroSlides();
   }
 
@@ -233,7 +233,7 @@ export class CmsService {
       await this.replacePillars(pillars);
     }
 
-    RevalidateService.triggerRevalidation(["home", "tentang"]);
+    await RevalidateService.triggerRevalidation(["home", "tentang"]);
     return await this.getTentang();
   }
 
@@ -260,7 +260,7 @@ export class CmsService {
       inserted.push(res);
     }
 
-    RevalidateService.triggerRevalidation(["home", "tentang"]);
+    await RevalidateService.triggerRevalidation(["home", "tentang"]);
     return inserted;
   }
 
@@ -288,7 +288,7 @@ export class CmsService {
       })
       .returning();
 
-    RevalidateService.triggerRevalidation(["partners", "home"]);
+    await RevalidateService.triggerRevalidation(["partners", "home"]);
     return created;
   }
 
@@ -308,7 +308,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Data mitra tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["partners", "home"]);
+    await RevalidateService.triggerRevalidation(["partners", "home"]);
     return updated;
   }
 
@@ -322,7 +322,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Data mitra tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["partners", "home"]);
+    await RevalidateService.triggerRevalidation(["partners", "home"]);
     return deleted;
   }
 
@@ -359,7 +359,7 @@ export class CmsService {
       })
       .returning();
 
-    RevalidateService.triggerRevalidation(["businesses", "home"]);
+    await RevalidateService.triggerRevalidation(["businesses", "home"]);
     return created;
   }
 
@@ -388,7 +388,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Bisnis kader tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["businesses", "home"]);
+    await RevalidateService.triggerRevalidation(["businesses", "home"]);
     return updated;
   }
 
@@ -402,7 +402,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Bisnis kader tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["businesses", "home"]);
+    await RevalidateService.triggerRevalidation(["businesses", "home"]);
     return deleted;
   }
 
@@ -433,7 +433,7 @@ export class CmsService {
       })
       .returning();
 
-    RevalidateService.triggerRevalidation(["achievements", "home"]);
+    await RevalidateService.triggerRevalidation(["achievements", "home"]);
     return created;
   }
 
@@ -453,7 +453,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Prestasi tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["achievements", "home"]);
+    await RevalidateService.triggerRevalidation(["achievements", "home"]);
     return updated;
   }
 
@@ -467,7 +467,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Prestasi tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["achievements", "home"]);
+    await RevalidateService.triggerRevalidation(["achievements", "home"]);
     return deleted;
   }
 
@@ -494,7 +494,7 @@ export class CmsService {
       .values(data)
       .returning();
 
-    RevalidateService.triggerRevalidation(["testimonials", "home"]);
+    await RevalidateService.triggerRevalidation(["testimonials", "home"]);
     return created;
   }
 
@@ -509,7 +509,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Testimoni tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["testimonials", "home"]);
+    await RevalidateService.triggerRevalidation(["testimonials", "home"]);
     return updated;
   }
 
@@ -524,7 +524,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Testimoni tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["testimonials", "home"]);
+    await RevalidateService.triggerRevalidation(["testimonials", "home"]);
     return updated;
   }
 
@@ -538,7 +538,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Testimoni tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["testimonials", "home"]);
+    await RevalidateService.triggerRevalidation(["testimonials", "home"]);
     return deleted;
   }
 
@@ -638,7 +638,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Bidang tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["programs", `program-${updated.slug}`, "home"]);
+    await RevalidateService.triggerRevalidation(["programs", `program-${updated.slug}`, "home"]);
     return updated;
   }
 
@@ -653,14 +653,14 @@ export class CmsService {
         .set(data)
         .where(eq(workProgramBidangs.id, existing.id))
         .returning();
-      RevalidateService.triggerRevalidation(["programs", `program-${data.slug}`, "home"]);
+      await RevalidateService.triggerRevalidation(["programs", `program-${data.slug}`, "home"]);
       return updated;
     } else {
       const [created] = await db
         .insert(workProgramBidangs)
         .values(data)
         .returning();
-      RevalidateService.triggerRevalidation(["programs", `program-${data.slug}`, "home"]);
+      await RevalidateService.triggerRevalidation(["programs", `program-${data.slug}`, "home"]);
       return created;
     }
   }
@@ -671,7 +671,7 @@ export class CmsService {
       .values(data)
       .returning();
 
-    RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "home"]);
     return created;
   }
 
@@ -686,7 +686,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Kompartemen tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "home"]);
     return updated;
   }
 
@@ -700,7 +700,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Kompartemen tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "home"]);
     return deleted;
   }
 
@@ -710,7 +710,7 @@ export class CmsService {
       .values(data)
       .returning();
 
-    RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "home"]);
     return created;
   }
 
@@ -725,7 +725,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Program slide tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "home"]);
     return updated;
   }
 
@@ -739,7 +739,7 @@ export class CmsService {
       throw new AppError(404, "NOT_FOUND", "Program slide tidak ditemukan");
     }
 
-    RevalidateService.triggerRevalidation(["programs", "home"]);
+    await RevalidateService.triggerRevalidation(["programs", "home"]);
     return deleted;
   }
 }
