@@ -99,9 +99,12 @@ export class FinanceService {
     };
   }
 
-  async getTransactions(query: FinanceQueryInput) {
+  async getTransactions(query: FinanceQueryInput, createdById?: string) {
     const conditions = [];
 
+    if (createdById) {
+      conditions.push(eq(transactions.createdBy, createdById));
+    }
     if (query.startDate) {
       conditions.push(gte(transactions.transactionDate, query.startDate));
     }
@@ -276,10 +279,11 @@ export class FinanceService {
     }
   }
 
-  async getTransactionReceipt(id: string): Promise<Buffer> {
+  async getTransactionReceipt(id: string, requesterId?: string): Promise<Buffer> {
     const existing = await db
       .select({
         id: transactions.id,
+        createdBy: transactions.createdBy,
         receiptNumber: transactions.receiptNumber,
         type: transactions.type,
         fromEntity: transactions.fromEntity,
@@ -299,6 +303,13 @@ export class FinanceService {
     }
 
     const tx = existing[0];
+    if (requesterId && tx.createdBy !== requesterId) {
+      throw new AppError(
+        403,
+        "FORBIDDEN",
+        "Anda hanya dapat mengunduh resi untuk pengajuan transaksi Anda sendiri"
+      );
+    }
     if (tx.status !== "APPROVED") {
       throw new AppError(
         400,

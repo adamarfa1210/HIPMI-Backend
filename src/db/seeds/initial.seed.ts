@@ -15,7 +15,8 @@ export const DEFAULT_ROLES = [
 export const DEFAULT_MODULES = [
   { code: "kaders", label: "Database Kader" },
   { code: "dashboard", label: "Dashboard Utama" },
-  { code: "finance", label: "Keuangan & Resi" },
+  { code: "finance-request", label: "Pengajuan Keuangan" },
+  { code: "finance", label: "Persetujuan & Kas Keuangan" },
   { code: "tracking", label: "Tracking Kader & Scoring" },
   { code: "leaderboard", label: "Leaderboard" },
   { code: "calendar", label: "Calendar HIPMI" },
@@ -66,12 +67,16 @@ export function getPermissionFlags(roleName: string, moduleCode: string): Permis
       flags.canRead = true; // All roles can view dashboard
       break;
 
-    case "finance":
+    case "finance-request":
       if (["Topman", "Kabid", "Kadiv", "Staff"].includes(roleName)) {
         flags.canRead = true;
         flags.canCreate = true;
       }
+      break;
+
+    case "finance":
       if (roleName === "Topman") {
+        flags.canRead = true;
         flags.canApprove = true;
       }
       break;

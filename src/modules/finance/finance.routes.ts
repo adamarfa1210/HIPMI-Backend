@@ -18,6 +18,69 @@ export const financeRouter = new Hono<{ Variables: Variables }>();
 // All finance routes require authenticated session
 financeRouter.use("*", authMiddleware);
 
+// ============================================================================
+// MODUL 1: PENGAJUAN KEUANGAN (finance-request)
+// ============================================================================
+
+// A1. GET /api/finance/submissions (scoped to requester's own submissions)
+financeRouter.get(
+  "/submissions",
+  rbacMiddleware("finance-request", "read"),
+  async (c) => {
+    const user = c.get("user");
+    const query = financeQuerySchema.parse(c.req.query());
+    const result = await financeService.getTransactions(query, user.id);
+
+    return c.json({
+      success: true,
+      message: "Daftar pengajuan transaksi Anda berhasil dimuat",
+      data: result.transactions,
+      meta: result.meta,
+    });
+  }
+);
+
+// A2. POST /api/finance/submissions
+financeRouter.post(
+  "/submissions",
+  rbacMiddleware("finance-request", "create"),
+  zValidator("json", createTransactionSchema),
+  async (c) => {
+    const user = c.get("user");
+    const body = c.req.valid("json");
+
+    const created = await financeService.createTransaction(body, user.id);
+    return c.json(
+      {
+        success: true,
+        message: "Pengajuan transaksi berhasil dikirim dan menunggu persetujuan",
+        data: created,
+      },
+      201
+    );
+  }
+);
+
+// A3. GET /api/finance/submissions/:id/receipt (own approved submission receipt)
+financeRouter.get(
+  "/submissions/:id/receipt",
+  rbacMiddleware("finance-request", "read"),
+  async (c) => {
+    const user = c.get("user");
+    const id = c.req.param("id")!;
+    const pdfBuffer = await financeService.getTransactionReceipt(id, user.id);
+
+    return c.body(new Uint8Array(pdfBuffer), 200, {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="receipt-${id}.pdf"`,
+    });
+  }
+);
+
+// ============================================================================
+// MODUL 2: PERSETUJUAN & KAS KEUANGAN (finance)
+// ============================================================================
+
 // 1. GET /api/finance/summary
 financeRouter.get("/summary", rbacMiddleware("finance", "read"), async (c) => {
   const query = c.req.query();

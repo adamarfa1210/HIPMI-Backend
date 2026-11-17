@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { app } from "../src/app.js";
 import { createTestDatabase } from "./helpers/test-db.js";
 import { kaders, roles } from "../src/db/schema/auth.js";
-import { scoreLedgers } from "../src/db/schema/erp.js";
+import { scoreLedgers, transactions } from "../src/db/schema/erp.js";
 import { eq } from "drizzle-orm";
 
 describe("Milestone M2: Core ERP Operational Modules Integration Suite", () => {
@@ -333,6 +333,103 @@ describe("Milestone M2: Core ERP Operational Modules Integration Suite", () => {
       expect(pdfRes.headers.get("Content-Type")).toBe("application/pdf");
       const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
       expect(pdfBuffer.subarray(0, 5).toString()).toBe("%PDF-");
+    });
+
+    it("1.10 Module Separation: Staff can submit/read own requests via finance-request but is forbidden (403) on finance approval/treasury", async () => {
+      const staffLogin = await app.request("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nim: "1201220101", password: "kader123" }),
+      });
+      expect(staffLogin.status).toBe(200);
+      const staffToken = (await staffLogin.json()).data.accessToken;
+
+      // Staff submits a new financial request
+      const subRes = await app.request("/api/finance/submissions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${staffToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "CASH_OUT",
+          fromEntity: "HIPMI PT Telkom University",
+          toEntity: "Divisi Acara",
+          amount: 250000,
+          description: "Reimburse konsumsi rapat divisi",
+          transactionDate: "2026-03-05",
+        }),
+      });
+      expect(subRes.status).toBe(201);
+      const subId = (await subRes.json()).data.id;
+
+      // Staff sees ONLY their own submission
+      const listRes = await app.request("/api/finance/submissions", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${staffToken}` },
+      });
+      expect(listRes.status).toBe(200);
+      const listJson = await listRes.json();
+      expect(listJson.data.length).toBe(1);
+      expect(listJson.data[0].id).toBe(subId);
+
+      // Staff is blocked from treasury summary, global transactions, export, and approval
+      const summaryForbidden = await app.request("/api/finance/summary", {
+        headers: { Authorization: `Bearer ${staffToken}` },
+      });
+      expect(summaryForbidden.status).toBe(403);
+
+      const txForbidden = await app.request("/api/finance/transactions", {
+        headers: { Authorization: `Bearer ${staffToken}` },
+      });
+      expect(txForbidden.status).toBe(403);
+
+      const approveForbidden = await app.request(
+        `/api/finance/transactions/${subId}/approve`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${staffToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "APPROVED" }),
+        }
+      );
+      expect(approveForbidden.status).toBe(403);
+
+      // Admin approves Staff's submission
+      const approveOk = await app.request(
+        `/api/finance/transactions/${subId}/approve`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "APPROVED" }),
+        }
+      );
+      expect(approveOk.status).toBe(200);
+
+      // Staff can download receipt for own approved submission, but not Admin's transaction
+      const ownReceipt = await app.request(
+        `/api/finance/submissions/${subId}/receipt`,
+        {
+          headers: { Authorization: `Bearer ${staffToken}` },
+        }
+      );
+      expect(ownReceipt.status).toBe(200);
+
+      const otherReceipt = await app.request(
+        `/api/finance/submissions/${pendingTxId1}/receipt`,
+        {
+          headers: { Authorization: `Bearer ${staffToken}` },
+        }
+      );
+      expect(otherReceipt.status).toBe(403);
+
+      // Clean up test submission so Section 5 summary assertion stays exact
+      await dbHelper.db.delete(transactions).where(eq(transactions.id, subId));
     });
   });
 
