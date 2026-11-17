@@ -4,6 +4,7 @@ import { eq, and, gte, lte, asc } from "drizzle-orm";
 import { AppError } from "../../middlewares/error.middleware.js";
 import type {
   CreateCalendarEventInput,
+  UpdateCalendarEventInput,
   CalendarFilterInput,
 } from "./calendar.schema.js";
 
@@ -123,6 +124,73 @@ export class CalendarService {
       .returning();
 
     return created;
+  }
+
+  async updateEvent(id: string, input: UpdateCalendarEventInput) {
+    const existing = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, id))
+      .limit(1);
+
+    if (!existing.length) {
+      throw new AppError(404, "NOT_FOUND", "Agenda kalender tidak ditemukan");
+    }
+
+    const curr = existing[0];
+    const nextStart = input.startAt ? new Date(input.startAt) : curr.startAt;
+    const nextEnd = input.endAt ? new Date(input.endAt) : curr.endAt;
+
+    if (nextEnd < nextStart) {
+      throw new AppError(
+        400,
+        "BAD_REQUEST",
+        "Waktu selesai acara tidak boleh lebih awal dari waktu mulai"
+      );
+    }
+
+    if (input.prokerId) {
+      const proker = await db
+        .select({ id: prokers.id })
+        .from(prokers)
+        .where(eq(prokers.id, input.prokerId))
+        .limit(1);
+      if (!proker.length) {
+        throw new AppError(404, "NOT_FOUND", "Proker tidak ditemukan");
+      }
+    }
+
+    const patch: Record<string, any> = {};
+    if (input.prokerId !== undefined) patch.prokerId = input.prokerId || null;
+    if (input.title !== undefined) patch.title = input.title;
+    if (input.category !== undefined) patch.category = input.category;
+    if (input.startAt !== undefined) patch.startAt = nextStart;
+    if (input.endAt !== undefined) patch.endAt = nextEnd;
+    if (input.location !== undefined) patch.location = input.location;
+    if (input.isPublic !== undefined) patch.isPublic = input.isPublic;
+
+    const [updated] = await db
+      .update(calendarEvents)
+      .set(patch)
+      .where(eq(calendarEvents.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  async deleteEvent(id: string) {
+    const existing = await db
+      .select({ id: calendarEvents.id })
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, id))
+      .limit(1);
+
+    if (!existing.length) {
+      throw new AppError(404, "NOT_FOUND", "Agenda kalender tidak ditemukan");
+    }
+
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+    return { id };
   }
 }
 

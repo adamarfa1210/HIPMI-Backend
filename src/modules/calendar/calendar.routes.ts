@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { calendarService } from "./calendar.service.js";
 import {
   createCalendarEventSchema,
+  updateCalendarEventSchema,
   calendarFilterSchema,
 } from "./calendar.schema.js";
 import { authMiddleware, type AuthUser } from "../../middlewares/auth.middleware.js";
@@ -57,3 +58,31 @@ calendarRouter.post(
     );
   }
 );
+
+calendarRouter.patch(
+  "/:id",
+  rbacMiddleware("calendar", "update"),
+  zValidator("json", updateCalendarEventSchema),
+  async (c) => {
+    const id = c.req.param("id")!;
+    const body = c.req.valid("json");
+    const updated = await calendarService.updateEvent(id, body);
+
+    return c.json({
+      success: true,
+      message: "Agenda kalender berhasil diperbarui",
+      data: updated,
+    });
+  }
+);
+
+calendarRouter.delete("/:id", rbacMiddleware("calendar", "delete"), async (c) => {
+  const id = c.req.param("id")!;
+  const data = await calendarService.deleteEvent(id);
+
+  return c.json({
+    success: true,
+    message: "Agenda kalender berhasil dihapus",
+    data,
+  });
+});

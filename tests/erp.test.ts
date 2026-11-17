@@ -794,6 +794,48 @@ describe("Milestone M2: Core ERP Operational Modules Integration Suite", () => {
       expect(foundPublic).toBeDefined();
       expect(foundPublic.title).toBe("HIPMI Business Festival & Expo 2026");
     });
+
+    it("4.3 PATCH /api/calendar/:id and DELETE /api/calendar/:id update and delete calendar event", async () => {
+      const createRes = await app.request("/api/calendar", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Agenda Sementara Uji CRUD",
+          category: "ORGANIZATION_HOLIDAY",
+          startAt: "2026-08-17T08:00:00.000Z",
+          endAt: "2026-08-17T10:00:00.000Z",
+          location: "Kampus Telkom University",
+          isPublic: false,
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const tempId = (await createRes.json()).data.id;
+
+      const patchRes = await app.request(`/api/calendar/${tempId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Upacara HUT RI & Libur Organisasi",
+          isPublic: true,
+        }),
+      });
+      expect(patchRes.status).toBe(200);
+      const patchJson = await patchRes.json();
+      expect(patchJson.data.title).toBe("Upacara HUT RI & Libur Organisasi");
+      expect(patchJson.data.isPublic).toBe(true);
+
+      const delRes = await app.request(`/api/calendar/${tempId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      expect(delRes.status).toBe(200);
+    });
   });
 
   // ==========================================

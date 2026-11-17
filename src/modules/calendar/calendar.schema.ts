@@ -46,5 +46,8 @@ export const calendarFilterSchema = z.object({
     .optional(),
 });
 
+export const updateCalendarEventSchema = createCalendarEventSchema.partial();
+
 export type CreateCalendarEventInput = z.infer<typeof createCalendarEventSchema>;
+export type UpdateCalendarEventInput = z.infer<typeof updateCalendarEventSchema>;
 export type CalendarFilterInput = z.infer<typeof calendarFilterSchema>;
