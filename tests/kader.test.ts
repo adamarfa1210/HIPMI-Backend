@@ -295,4 +295,44 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     expect(newlyCreated).toBeDefined();
     expect(newlyCreated!.fullName).toBe("Kader Baru Dari Excel");
   });
+
+  it("8. GET /api/kaders/roles returns role options and POST /api/kaders/:id/reset-password resets cadre password", async () => {
+    const rolesRes = await app.request("/api/kaders/roles", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(rolesRes.status).toBe(200);
+    const rolesJson = await rolesRes.json();
+    expect(Array.isArray(rolesJson.data)).toBe(true);
+    expect(rolesJson.data.length).toBeGreaterThanOrEqual(6);
+
+    const targetCadre = await dbHelper.db.query.kaders.findFirst({
+      where: eq(kaders.nim, "1201228888"),
+    });
+    expect(targetCadre).toBeDefined();
+
+    const resetRes = await app.request(
+      `/api/kaders/${targetCadre!.id}/reset-password`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newPassword: "resetNewPass99" }),
+      }
+    );
+    expect(resetRes.status).toBe(200);
+    const resetJson = await resetRes.json();
+    expect(resetJson.success).toBe(true);
+    expect(resetJson.data.resetToNim).toBe(false);
+
+    // Confirm cadre can log in with the newly reset password
+    const loginRes = await app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nim: "1201228888", password: "resetNewPass99" }),
+    });
+    expect(loginRes.status).toBe(200);
+  });
 });

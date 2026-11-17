@@ -11,6 +11,17 @@ import type {
 } from "./kader.schema.js";
 
 export class KaderService {
+  async listRoles() {
+    return await db
+      .select({
+        id: roles.id,
+        name: roles.name,
+        isSystemDefault: roles.isSystemDefault,
+      })
+      .from(roles)
+      .orderBy(asc(roles.name));
+  }
+
   async listKaders(filter: KaderFilterInput) {
     const conditions = [];
 
@@ -245,6 +256,49 @@ export class KaderService {
     return {
       success: true,
       message: "Kader berhasil dinonaktifkan",
+    };
+  }
+
+  async resetCadrePassword(
+    id: string,
+    newPassword: string | undefined,
+    actorKaderId: string
+  ) {
+    const existing = await db.query.kaders.findFirst({
+      where: eq(kaders.id, id),
+    });
+
+    if (!existing) {
+      throw new AppError(404, "NOT_FOUND", "Kader tidak ditemukan");
+    }
+
+    const rawPassword =
+      newPassword && newPassword.trim().length > 0 ? newPassword.trim() : existing.nim;
+    const passwordHash = await bcrypt.hash(rawPassword, 10);
+
+    await db
+      .update(kaders)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(kaders.id, id));
+
+    await db.insert(auditLogs).values({
+      actorKaderId,
+      action: "RESET_CADRE_PASSWORD",
+      entityName: "kaders",
+      entityId: id,
+      metadata: {
+        nim: existing.nim,
+        resetToDefaultNim: !(newPassword && newPassword.trim().length > 0),
+      },
+    });
+
+    return {
+      id: existing.id,
+      nim: existing.nim,
+      resetToNim: !(newPassword && newPassword.trim().length > 0),
     };
   }
 

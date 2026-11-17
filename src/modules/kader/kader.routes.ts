@@ -5,6 +5,7 @@ import {
   createCadreSchema,
   updateCadreSchema,
   kaderFilterSchema,
+  resetCadrePasswordSchema,
 } from "./kader.schema.js";
 import { authMiddleware, type AuthUser } from "../../middlewares/auth.middleware.js";
 import { rbacMiddleware } from "../../middlewares/rbac.middleware.js";
@@ -59,6 +60,15 @@ kaderRouter.post("/import", rbacMiddleware("kaders", "create"), async (c) => {
   return c.json({
     success: true,
     data: result,
+  });
+});
+
+// 2b. GET /api/kaders/roles (MUST be placed before /:id)
+kaderRouter.get("/roles", rbacMiddleware("kaders", "read"), async (c) => {
+  const data = await kaderService.listRoles();
+  return c.json({
+    success: true,
+    data,
   });
 });
 
@@ -134,3 +144,28 @@ kaderRouter.delete("/:id", rbacMiddleware("kaders", "delete"), async (c) => {
 
   return c.json(result);
 });
+
+// 8. POST /api/kaders/:id/reset-password (PRD 3.1 Admin/BPH Reset Password)
+kaderRouter.post(
+  "/:id/reset-password",
+  rbacMiddleware("kaders", "update"),
+  zValidator("json", resetCadrePasswordSchema),
+  async (c) => {
+    const id = c.req.param("id")!;
+    const user = c.get("user");
+    const body = c.req.valid("json");
+    const data = await kaderService.resetCadrePassword(
+      id,
+      body.newPassword,
+      user!.id
+    );
+
+    return c.json({
+      success: true,
+      message: data.resetToNim
+        ? "Password kader berhasil direset ke NIM"
+        : "Password kader berhasil diperbarui",
+      data,
+    });
+  }
+);

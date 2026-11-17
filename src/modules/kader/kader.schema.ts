@@ -59,3 +59,13 @@ export const kaderFilterSchema = z.object({
 });
 
 export type KaderFilterInput = z.infer<typeof kaderFilterSchema>;
+
+export const resetCadrePasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(6, "Password baru minimal 6 karakter")
+    .max(100)
+    .optional(),
+});
+
+export type ResetCadrePasswordInput = z.infer<typeof resetCadrePasswordSchema>;
