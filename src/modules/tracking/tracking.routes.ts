@@ -33,6 +33,18 @@ trackingRouter.get("/prokers", rbacMiddleware("tracking", "read"), async (c) => 
   });
 });
 
+// 1b. GET /api/tracking/prokers/:id
+trackingRouter.get("/prokers/:id", rbacMiddleware("tracking", "read"), async (c) => {
+  const id = c.req.param("id")!;
+  const data = await trackingService.getProkerById(id);
+
+  return c.json({
+    success: true,
+    message: "Detail program kerja berhasil dimuat",
+    data,
+  });
+});
+
 // 2. POST /api/tracking/prokers
 trackingRouter.post(
   "/prokers",
@@ -91,6 +103,18 @@ trackingRouter.post(
     );
   }
 );
+
+// 5a. GET /api/tracking/meetings
+trackingRouter.get("/meetings", rbacMiddleware("tracking", "read"), async (c) => {
+  const prokerId = c.req.query("prokerId");
+  const data = await trackingService.getMeetings(prokerId || undefined);
+
+  return c.json({
+    success: true,
+    message: "Daftar sesi rapat berhasil dimuat",
+    data,
+  });
+});
 
 // 5. POST /api/tracking/meetings
 trackingRouter.post(

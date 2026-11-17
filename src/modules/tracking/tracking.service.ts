@@ -7,7 +7,7 @@ import {
   scoreLedgers,
 } from "../../db/schema/erp.js";
 import { kaders } from "../../db/schema/auth.js";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import { AppError } from "../../middlewares/error.middleware.js";
 import type {
   CreateProkerInput,
@@ -65,6 +65,118 @@ export class TrackingService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  private async attachMeetingStats<T extends { id: string }>(meetingRows: T[]) {
+    if (!meetingRows.length) return [];
+    const ids = meetingRows.map((m) => m.id);
+    const attRows = await db
+      .select({
+        meetingId: meetingAttendances.meetingId,
+        status: meetingAttendances.status,
+      })
+      .from(meetingAttendances)
+      .where(inArray(meetingAttendances.meetingId, ids));
+
+    const statsMap = new Map<string, { total: number; hadir: number }>();
+    for (const row of attRows) {
+      const curr = statsMap.get(row.meetingId) ?? { total: 0, hadir: 0 };
+      curr.total += 1;
+      if (row.status === "HADIR") curr.hadir += 1;
+      statsMap.set(row.meetingId, curr);
+    }
+
+    return meetingRows.map((m) => {
+      const s = statsMap.get(m.id) ?? { total: 0, hadir: 0 };
+      return {
+        ...m,
+        attendanceCount: s.total,
+        hadirCount: s.hadir,
+      };
+    });
+  }
+
+  async getProkerById(id: string) {
+    const prokerRes = await db
+      .select({
+        id: prokers.id,
+        bidang: prokers.bidang,
+        title: prokers.title,
+        picKaderId: prokers.picKaderId,
+        startDate: prokers.startDate,
+        endDate: prokers.endDate,
+        status: prokers.status,
+        createdAt: prokers.createdAt,
+        picName: kaders.fullName,
+        picNim: kaders.nim,
+      })
+      .from(prokers)
+      .leftJoin(kaders, eq(prokers.picKaderId, kaders.id))
+      .where(eq(prokers.id, id))
+      .limit(1);
+
+    if (!prokerRes.length) {
+      throw new AppError(404, "NOT_FOUND", "Proker tidak ditemukan");
+    }
+
+    const [committees, meetingRows] = await Promise.all([
+      db
+        .select({
+          id: prokerCommittees.id,
+          prokerId: prokerCommittees.prokerId,
+          kaderId: prokerCommittees.kaderId,
+          committeeRole: prokerCommittees.committeeRole,
+          pointsAwarded: prokerCommittees.pointsAwarded,
+          createdAt: prokerCommittees.createdAt,
+          kaderName: kaders.fullName,
+          nim: kaders.nim,
+          prodi: kaders.prodi,
+        })
+        .from(prokerCommittees)
+        .leftJoin(kaders, eq(prokerCommittees.kaderId, kaders.id))
+        .where(eq(prokerCommittees.prokerId, id))
+        .orderBy(desc(prokerCommittees.createdAt)),
+      db
+        .select({
+          id: meetings.id,
+          prokerId: meetings.prokerId,
+          title: meetings.title,
+          meetingDate: meetings.meetingDate,
+          pointsPerAttendance: meetings.pointsPerAttendance,
+          createdAt: meetings.createdAt,
+        })
+        .from(meetings)
+        .where(eq(meetings.prokerId, id))
+        .orderBy(desc(meetings.meetingDate)),
+    ]);
+
+    const enrichedMeetings = await this.attachMeetingStats(meetingRows);
+
+    return {
+      ...prokerRes[0],
+      committees,
+      meetings: enrichedMeetings,
+    };
+  }
+
+  async getMeetings(prokerId?: string) {
+    const rows = await db
+      .select({
+        id: meetings.id,
+        prokerId: meetings.prokerId,
+        title: meetings.title,
+        meetingDate: meetings.meetingDate,
+        pointsPerAttendance: meetings.pointsPerAttendance,
+        createdAt: meetings.createdAt,
+        prokerTitle: prokers.title,
+        prokerBidang: prokers.bidang,
+      })
+      .from(meetings)
+      .leftJoin(prokers, eq(meetings.prokerId, prokers.id))
+      .where(prokerId ? eq(meetings.prokerId, prokerId) : undefined)
+      .orderBy(desc(meetings.meetingDate));
+
+    return await this.attachMeetingStats(rows);
   }
 
   async createProker(input: CreateProkerInput) {

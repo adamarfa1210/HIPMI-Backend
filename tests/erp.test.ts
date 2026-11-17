@@ -555,6 +555,36 @@ describe("Milestone M2: Core ERP Operational Modules Integration Suite", () => {
       expect(reversalLedger).toBeDefined();
       expect(reversalLedger!.description).toContain("IZIN");
     });
+
+    it("2.8 GET /api/tracking/prokers/:id returns proker detail with assigned committees and meetings", async () => {
+      const res = await app.request(`/api/tracking/prokers/${prokerId}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.data.id).toBe(prokerId);
+      expect(Array.isArray(json.data.committees)).toBe(true);
+      expect(json.data.committees.length).toBeGreaterThanOrEqual(1);
+      expect(Array.isArray(json.data.meetings)).toBe(true);
+      expect(json.data.meetings.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("2.9 GET /api/tracking/meetings returns meetings list with attendance counts", async () => {
+      const res = await app.request(`/api/tracking/meetings?prokerId=${prokerId}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(Array.isArray(json.data)).toBe(true);
+      expect(json.data.length).toBeGreaterThanOrEqual(1);
+      expect(json.data[0].attendanceCount).toBeGreaterThanOrEqual(1);
+    });
   });
 
   // ==========================================
