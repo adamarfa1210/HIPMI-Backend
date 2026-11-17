@@ -1,13 +1,21 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
-import { rbacMiddleware } from "../../middlewares/rbac.middleware.js";
+import { rbacAnyMiddleware } from "../../middlewares/rbac.middleware.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { MediaService } from "../../services/media.service.js";
 
 export const mediaRouter = new Hono();
 mediaRouter.use("*", authMiddleware);
 
-mediaRouter.post("/upload", rbacMiddleware("cms", "create"), async (c) => {
+mediaRouter.post(
+  "/upload",
+  rbacAnyMiddleware([
+    { moduleCode: "cms", action: "create" },
+    { moduleCode: "cms", action: "update" },
+    { moduleCode: "news-manage", action: "create" },
+    { moduleCode: "news-manage", action: "update" },
+  ]),
+  async (c) => {
   const contentType = c.req.header("Content-Type") || "";
   if (!contentType.includes("multipart/form-data")) {
     throw new AppError(400, "BAD_REQUEST", "Content-Type harus multipart/form-data");
