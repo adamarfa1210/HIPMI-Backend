@@ -31,10 +31,15 @@ export const createNewsSchema = z.object({
   targetAudience: z.enum(newsAudienceValues).default("BOTH"),
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).optional(),
   publishedAt: z.string().optional(),
 });
 
 export const updateNewsSchema = createNewsSchema.partial();
+
+export const reorderNewsSchema = z.object({
+  orderedIds: z.array(z.string().uuid()).min(1, "Minimal 1 ID berita diperlukan"),
+});
 
 export const newsQuerySchema = z.object({
   category: z.enum(newsCategoryValues).optional(),

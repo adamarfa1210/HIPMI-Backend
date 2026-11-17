@@ -272,6 +272,7 @@ export const newsArticles = pgTable("news_articles", {
   targetAudience: announcementAudienceEnum("target_audience").notNull().default("BOTH"),
   isFeatured: boolean("is_featured").notNull().default(false),
   isPublished: boolean("is_published").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
   publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
   createdBy: uuid("created_by").references(() => kaders.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

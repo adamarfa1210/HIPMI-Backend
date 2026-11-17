@@ -139,4 +139,23 @@ describe("News Module: Placement Tag Isolation (INTERNAL / PUBLIC / BOTH) & RBAC
     });
     expect(delRes.status).toBe(200);
   });
+
+  it("4. PATCH /api/news/manage/reorder shifts priority order and reflects immediately in /api/public/news", async () => {
+    const reorderRes = await app.request("/api/news/manage/reorder", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ orderedIds: [bothId, publicId] }),
+    });
+    expect(reorderRes.status).toBe(200);
+
+    const publicRes = await app.request("/api/public/news");
+    expect(publicRes.status).toBe(200);
+    const list = (await publicRes.json()).data as Array<{ id: string; sortOrder: number }>;
+    expect(list.map((n) => n.id)).toEqual([bothId, publicId]);
+    expect(list[0].sortOrder).toBe(1);
+    expect(list[1].sortOrder).toBe(2);
+  });
 });

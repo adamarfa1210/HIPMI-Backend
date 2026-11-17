@@ -4,6 +4,7 @@ import { newsService } from "./news.service.js";
 import {
   createNewsSchema,
   newsQuerySchema,
+  reorderNewsSchema,
   updateNewsSchema,
 } from "./news.schema.js";
 import { authMiddleware, type AuthUser } from "../../middlewares/auth.middleware.js";
@@ -73,6 +74,21 @@ newsRouter.post(
       },
       201
     );
+  }
+);
+
+newsRouter.patch(
+  "/manage/reorder",
+  rbacMiddleware("news-manage", "update"),
+  zValidator("json", reorderNewsSchema),
+  async (c) => {
+    const body = c.req.valid("json");
+    const result = await newsService.reorderNews(body.orderedIds);
+    return c.json({
+      success: true,
+      message: "Urutan prioritas berita berhasil diperbarui",
+      data: result,
+    });
   }
 );
 

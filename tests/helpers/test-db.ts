@@ -434,6 +434,7 @@ export async function createTestDatabase() {
       target_audience announcement_audience NOT NULL DEFAULT 'BOTH',
       is_featured BOOLEAN NOT NULL DEFAULT false,
       is_published BOOLEAN NOT NULL DEFAULT true,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       published_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       created_by UUID REFERENCES kaders(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
