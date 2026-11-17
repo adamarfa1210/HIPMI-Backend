@@ -14,6 +14,7 @@ import { leaderboardRouter } from "./modules/leaderboard/leaderboard.routes.js";
 import { calendarRouter, publicCalendarRouter } from "./modules/calendar/calendar.routes.js";
 import { documentsRouter } from "./modules/documents/documents.routes.js";
 import { cmsRouter } from "./modules/cms/cms.routes.js";
+import { newsRouter, publicNewsRouter } from "./modules/news/news.routes.js";
 import { publicRouter } from "./modules/public/public.routes.js";
 import { mediaRouter } from "./modules/media/media.routes.js";
 import type { AuthUser } from "./middlewares/auth.middleware.js";
@@ -118,6 +119,8 @@ app.route("/api/calendar", calendarRouter);
 app.route("/api/public/calendar", publicCalendarRouter);
 app.route("/api/documents", documentsRouter);
 app.route("/api/cms", cmsRouter);
+app.route("/api/news", newsRouter);
+app.route("/api/public/news", publicNewsRouter);
 app.route("/api/media", mediaRouter);
 app.route("/api/public", publicRouter);
 

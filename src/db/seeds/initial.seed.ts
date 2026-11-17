@@ -22,6 +22,8 @@ export const DEFAULT_MODULES = [
   { code: "calendar", label: "Calendar HIPMI" },
   { code: "documents", label: "Template Surat & Dokumen" },
   { code: "cms", label: "CMS Web Profile" },
+  { code: "news", label: "Berita HIPMI (Konsumsi)" },
+  { code: "news-manage", label: "Setting Berita (Kelola)" },
   { code: "admin-rbac", label: "Admin Role Matrix & RBAC" },
 ];
 
@@ -116,6 +118,19 @@ export function getPermissionFlags(roleName: string, moduleCode: string): Permis
       if (roleName === "Topman") {
         flags.canCreate = true;
         flags.canUpdate = true;
+      }
+      break;
+
+    case "news":
+      flags.canRead = true;
+      break;
+
+    case "news-manage":
+      if (["Topman", "Kabid"].includes(roleName)) {
+        flags.canRead = true;
+        flags.canCreate = true;
+        flags.canUpdate = true;
+        flags.canDelete = true;
       }
       break;
 

@@ -420,6 +420,26 @@ export async function createTestDatabase() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    CREATE TYPE news_category AS ENUM ('Kegiatan', 'Pengumuman', 'Prestasi', 'Bisnis');
+
+    CREATE TABLE news_articles (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      title VARCHAR(120) NOT NULL,
+      category news_category NOT NULL DEFAULT 'Kegiatan',
+      summary VARCHAR(240) NOT NULL,
+      content TEXT NOT NULL,
+      image_src TEXT,
+      image_alt VARCHAR(140),
+      slot_status slot_status NOT NULL DEFAULT 'pending-asset',
+      target_audience announcement_audience NOT NULL DEFAULT 'BOTH',
+      is_featured BOOLEAN NOT NULL DEFAULT false,
+      is_published BOOLEAN NOT NULL DEFAULT true,
+      published_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_by UUID REFERENCES kaders(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Seed Default Singleton Records & 4 Bidangs
     INSERT INTO site_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
     INSERT INTO tentang_profile (id, eyebrow, title, description)

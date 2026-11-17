@@ -69,6 +69,13 @@ export const announcementAudienceEnum = pgEnum("announcement_audience", [
   "BOTH",
 ]);
 
+export const newsCategoryEnum = pgEnum("news_category", [
+  "Kegiatan",
+  "Pengumuman",
+  "Prestasi",
+  "Bisnis",
+]);
+
 // --- 1. Hero Slides ---
 
 export const heroSlides = pgTable("hero_slides", {
@@ -247,6 +254,26 @@ export const announcements = pgTable("announcements", {
   startDate: timestamp("start_date", { withTimezone: true }).notNull(),
   endDate: timestamp("end_date", { withTimezone: true }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// --- 9. News Articles (ERP Internal & UKM Web Profile) ---
+
+export const newsArticles = pgTable("news_articles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: varchar("title", { length: 120 }).notNull(),
+  category: newsCategoryEnum("category").notNull().default("Kegiatan"),
+  summary: varchar("summary", { length: 240 }).notNull(),
+  content: text("content").notNull(),
+  imageSrc: text("image_src"),
+  imageAlt: varchar("image_alt", { length: 140 }),
+  slotStatus: slotStatusEnum("slot_status").notNull().default("pending-asset"),
+  targetAudience: announcementAudienceEnum("target_audience").notNull().default("BOTH"),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  isPublished: boolean("is_published").notNull().default(true),
+  publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
+  createdBy: uuid("created_by").references(() => kaders.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
