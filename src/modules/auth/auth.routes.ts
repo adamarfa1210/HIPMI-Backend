@@ -6,8 +6,10 @@ import {
   changePasswordSchema,
   forgotPasswordSchema,
   completeOnboardingSchema,
+  updateProfileSchema,
 } from "./auth.schema.js";
 import { authMiddleware, type AuthUser } from "../../middlewares/auth.middleware.js";
+import { rbacMiddleware } from "../../middlewares/rbac.middleware.js";
 
 type Variables = {
   user: AuthUser;
@@ -72,6 +74,38 @@ authRouter.post(
     return c.json({
       success: true,
       message: "Akun berhasil dilengkapi dan password baru disimpan",
+      data: result,
+    });
+  }
+);
+
+// 6. GET & PATCH /api/auth/profile (Self-service Settings Profile module `profile`)
+authRouter.get(
+  "/profile",
+  authMiddleware,
+  rbacMiddleware("profile", "read"),
+  async (c) => {
+    const user = c.get("user");
+    const result = await authService.getMe(user.id);
+    return c.json({
+      success: true,
+      data: result,
+    });
+  }
+);
+
+authRouter.patch(
+  "/profile",
+  authMiddleware,
+  rbacMiddleware("profile", "update"),
+  zValidator("json", updateProfileSchema),
+  async (c) => {
+    const user = c.get("user");
+    const body = c.req.valid("json");
+    const result = await authService.updateOwnProfile(user.id, body);
+    return c.json({
+      success: true,
+      message: "Profil pribadi berhasil diperbarui",
       data: result,
     });
   }

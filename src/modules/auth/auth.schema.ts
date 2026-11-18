@@ -42,3 +42,20 @@ export const completeOnboardingSchema = z.object({
 });
 
 export type CompleteOnboardingInput = z.infer<typeof completeOnboardingSchema>;
+
+export const updateProfileSchema = z.object({
+  fullName: z.string().trim().min(3, "Nama lengkap minimal 3 karakter").max(120),
+  whatsappNumber: z.string().trim().min(8, "Nomor WhatsApp minimal 8 karakter").max(20),
+  prodi: z.string().trim().min(2, "Prodi minimal 2 karakter").max(80),
+  fakultas: z.string().trim().min(2, "Fakultas minimal 2 karakter").max(80),
+  instagram: z.string().trim().max(60).optional().nullable(),
+  businessName: z.string().trim().max(120).optional().nullable(),
+  interestCategory: z.enum([
+    "Kompetisi",
+    "Punya Bisnis",
+    "Belum Punya Bisnis",
+    "Belum Punya Bisnis tapi Minat Kompetisi",
+  ]),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

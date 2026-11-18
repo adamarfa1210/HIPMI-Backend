@@ -16,6 +16,7 @@ import type {
   ChangePasswordInput,
   ForgotPasswordInput,
   CompleteOnboardingInput,
+  UpdateProfileInput,
 } from "./auth.schema.js";
 
 export type OnboardingMode = "none" | "complete-profile" | "reset-password";
@@ -357,6 +358,41 @@ export class AuthService {
     await db.insert(auditLogs).values({
       actorKaderId: userId,
       action: cadre.profileCompleted ? "COMPLETE_PASSWORD_RESET" : "COMPLETE_ONBOARDING",
+      entityName: "kaders",
+      entityId: userId,
+      metadata: { nim: cadre.nim },
+    });
+
+    return await this.getMe(userId);
+  }
+
+  async updateOwnProfile(userId: string, input: UpdateProfileInput) {
+    const cadre = await db.query.kaders.findFirst({
+      where: eq(kaders.id, userId),
+    });
+
+    if (!cadre) {
+      throw new AppError(404, "NOT_FOUND", "Pengguna tidak ditemukan");
+    }
+
+    await db
+      .update(kaders)
+      .set({
+        fullName: input.fullName,
+        whatsappNumber: input.whatsappNumber,
+        prodi: input.prodi,
+        fakultas: input.fakultas,
+        instagram: input.instagram ? input.instagram : null,
+        businessName: input.businessName ? input.businessName : null,
+        interestCategory: input.interestCategory,
+        profileCompleted: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(kaders.id, userId));
+
+    await db.insert(auditLogs).values({
+      actorKaderId: userId,
+      action: "UPDATE_OWN_PROFILE",
       entityName: "kaders",
       entityId: userId,
       metadata: { nim: cadre.nim },

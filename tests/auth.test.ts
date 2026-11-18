@@ -217,4 +217,42 @@ describe("Milestone M1: Authentication API Suite", () => {
     });
     expect(newLoginRes.status).toBe(200);
   });
+
+  it("8. GET & PATCH /api/auth/profile allow self-profile editing via `profile` RBAC module", async () => {
+    const loginRes = await app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nim: "1201220001",
+        password: "newAdminPassword123",
+      }),
+    });
+    const token = (await loginRes.json()).data.accessToken;
+
+    const getProfileRes = await app.request("/api/auth/profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(getProfileRes.status).toBe(200);
+
+    const patchRes = await app.request("/api/auth/profile", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fullName: "Super Admin Terperbarui",
+        whatsappNumber: "081234567890",
+        prodi: "S1 Sistem Informasi",
+        fakultas: "Fakultas Rekayasa Industri",
+        instagram: "@superadmin_hipmi",
+        businessName: "PT Karya HIPMI",
+        interestCategory: "Punya Bisnis",
+      }),
+    });
+    expect(patchRes.status).toBe(200);
+    const patchJson = await patchRes.json();
+    expect(patchJson.data.user.fullName).toBe("Super Admin Terperbarui");
+    expect(patchJson.data.user.instagram).toBe("@superadmin_hipmi");
+  });
 });
