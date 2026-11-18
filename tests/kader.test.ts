@@ -239,11 +239,16 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     xlsx.utils.book_append_sheet(wb, ws, "Import");
     const fileBuffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
 
+    const staffRole = await dbHelper.db.query.roles.findFirst({
+      where: eq(roles.name, "Staff"),
+    });
+
     const formData = new FormData();
     const blob = new Blob([fileBuffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
     formData.append("file", blob, "test-import-nim.xlsx");
+    formData.append("roleId", staffRole!.id);
 
     const importRes = await app.request("/api/kaders/import", {
       method: "POST",
@@ -272,6 +277,7 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     });
     expect(newlyCreated).toBeDefined();
     expect(newlyCreated!.profileCompleted).toBe(false);
+    expect(newlyCreated!.roleId).toBe(staffRole!.id);
 
     const loginRes = await app.request("/api/auth/login", {
       method: "POST",
@@ -281,6 +287,7 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     expect(loginRes.status).toBe(200);
     const loginJson = await loginRes.json();
     expect(loginJson.data.user.onboardingMode).toBe("complete-profile");
+    expect(loginJson.data.user.roleName).toBe("Staff");
     const newCadreToken = loginJson.data.accessToken as string;
 
     // Must reject newPassword === NIM

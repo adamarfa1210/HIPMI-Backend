@@ -56,7 +56,12 @@ kaderRouter.post("/import", rbacMiddleware("kaders", "create"), async (c) => {
     throw new AppError(400, "BAD_REQUEST", "Invalid file payload");
   }
 
-  const result = await kaderService.importKaders(buffer, user!.id);
+  const roleId =
+    typeof body.roleId === "string" && body.roleId.trim().length > 0
+      ? body.roleId.trim()
+      : undefined;
+
+  const result = await kaderService.importKaders(buffer, user!.id, roleId);
   return c.json({
     success: true,
     data: result,

@@ -302,15 +302,22 @@ export class KaderService {
     };
   }
 
-  async importKaders(buffer: Buffer, actorKaderId: string) {
+  async importKaders(buffer: Buffer, actorKaderId: string, roleId?: string) {
     const rows = parseExcelOrCsv(buffer);
     if (!rows.length) {
       throw new AppError(400, "BAD_REQUEST", "File import kosong atau kolom NIM tidak ditemukan");
     }
 
     const allRoles = await db.select().from(roles);
-    const defaultRoleId =
+    let targetRoleId =
       allRoles.find((r) => r.name.toLowerCase() === "kader 1")?.id || allRoles[0].id;
+    if (roleId) {
+      const foundRole = allRoles.find((r) => r.id === roleId);
+      if (!foundRole) {
+        throw new AppError(400, "VALIDATION_ERROR", "Role yang dipilih tidak ditemukan");
+      }
+      targetRoleId = foundRole.id;
+    }
 
     let created = 0;
     let skipped = 0;
@@ -344,7 +351,7 @@ export class KaderService {
         const passwordHash = await bcrypt.hash(nim, 10);
 
         await db.insert(kaders).values({
-          roleId: defaultRoleId,
+          roleId: targetRoleId,
           nim,
           passwordHash,
           fullName: `Kader ${nim}`,
@@ -374,6 +381,7 @@ export class KaderService {
       entityName: "kaders",
       entityId: actorKaderId,
       metadata: {
+        roleId: targetRoleId,
         totalProcessed: rows.length,
         created,
         skipped,
