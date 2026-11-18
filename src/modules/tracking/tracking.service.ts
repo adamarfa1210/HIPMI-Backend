@@ -402,7 +402,7 @@ export class TrackingService {
         throw new AppError(404, "NOT_FOUND", "Sesi rapat tidak ditemukan");
       }
       const meeting = meetingRes[0];
-      const basePoints = meeting.pointsPerAttendance || 5;
+      const basePoints = meeting.pointsPerAttendance ?? 5;
 
       const results = [];
 
@@ -454,7 +454,7 @@ export class TrackingService {
         if (item.status === "HADIR") {
           const pointsToAward = item.pointsAwarded ?? basePoints;
 
-          if (currentNetPoints <= 0) {
+          if (pointsToAward > 0 && currentNetPoints <= 0) {
             // First time or recovered from previous absence: award points
             await tx.insert(scoreLedgers).values({
               kaderId: item.kaderId,

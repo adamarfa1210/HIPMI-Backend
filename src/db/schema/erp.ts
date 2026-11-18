@@ -13,7 +13,7 @@ import {
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { kaders } from "./auth.js";
+import { kaders, roles } from "./auth.js";
 
 // Enums
 export const transactionTypeEnum = pgEnum("transaction_type", ["CASH_IN", "CASH_OUT"]);
@@ -29,6 +29,7 @@ export const scoreSourceTypeEnum = pgEnum("score_source_type", [
 export const calendarCategoryEnum = pgEnum("calendar_category", [
   "PROKER",
   "INTERNAL_MEETING",
+  "RBPL",
   "COMPETITION_DEADLINE",
   "ORGANIZATION_HOLIDAY",
 ]);
@@ -201,6 +202,16 @@ export const calendarEvents = pgTable(
     location: varchar("location", { length: 140 }).notNull(),
     isPublic: boolean("is_public").default(false).notNull(),
     googleEventId: varchar("google_event_id", { length: 120 }),
+    createdBy: uuid("created_by").references(() => kaders.id, {
+      onDelete: "set null",
+    }),
+    enableQrAttendance: boolean("enable_qr_attendance").default(false).notNull(),
+    pointsPerAttendance: integer("points_per_attendance").default(5).notNull(),
+    qrToken: varchar("qr_token", { length: 120 }).unique(),
+    qrIsOpen: boolean("qr_is_open").default(false).notNull(),
+    meetingId: uuid("meeting_id").references(() => meetings.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -210,6 +221,26 @@ export const calendarEvents = pgTable(
     publicIdx: index("idx_calendar_events_public").on(
       table.isPublic,
       table.startAt
+    ),
+  })
+);
+
+// 8. Calendar Event Target Roles (Per-agenda audience & attendance eligibility)
+export const calendarEventTargetRoles = pgTable(
+  "calendar_event_target_roles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .references(() => calendarEvents.id, { onDelete: "cascade" })
+      .notNull(),
+    roleId: uuid("role_id")
+      .references(() => roles.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => ({
+    eventRoleUnique: uniqueIndex("idx_calendar_event_target_role_unique").on(
+      table.eventId,
+      table.roleId
     ),
   })
 );
@@ -279,9 +310,32 @@ export const scoreLedgersRelations = relations(scoreLedgers, ({ one }) => ({
   }),
 }));
 
-export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+export const calendarEventsRelations = relations(calendarEvents, ({ one, many }) => ({
   proker: one(prokers, {
     fields: [calendarEvents.prokerId],
     references: [prokers.id],
   }),
+  creator: one(kaders, {
+    fields: [calendarEvents.createdBy],
+    references: [kaders.id],
+  }),
+  meeting: one(meetings, {
+    fields: [calendarEvents.meetingId],
+    references: [meetings.id],
+  }),
+  targetRoles: many(calendarEventTargetRoles),
 }));
+
+export const calendarEventTargetRolesRelations = relations(
+  calendarEventTargetRoles,
+  ({ one }) => ({
+    event: one(calendarEvents, {
+      fields: [calendarEventTargetRoles.eventId],
+      references: [calendarEvents.id],
+    }),
+    role: one(roles, {
+      fields: [calendarEventTargetRoles.roleId],
+      references: [roles.id],
+    }),
+  })
+);

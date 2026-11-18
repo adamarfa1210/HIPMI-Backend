@@ -20,6 +20,8 @@ export const DEFAULT_MODULES = [
   { code: "tracking", label: "Tracking Kader & Scoring" },
   { code: "leaderboard", label: "Leaderboard" },
   { code: "calendar", label: "Calendar HIPMI" },
+  { code: "rbpl", label: "RBPL (Rapat Badan Pengurus Lengkap)" },
+  { code: "qr-scanner", label: "Kamera Scan QR ERP" },
   { code: "documents", label: "Template Surat & Dokumen" },
   { code: "cms", label: "CMS Web Profile" },
   { code: "news", label: "Berita HIPMI (Konsumsi)" },
@@ -136,6 +138,8 @@ export function getPermissionFlags(roleName: string, moduleCode: string): Permis
       }
       break;
 
+    case "rbpl":
+    case "qr-scanner":
     case "profile":
     case "password-reset":
     case "admin-rbac":

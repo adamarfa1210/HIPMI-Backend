@@ -117,7 +117,7 @@ export async function createTestDatabase() {
     CREATE TYPE proker_status AS ENUM ('PLANNED', 'ON_PROGRESS', 'COMPLETED', 'ACTIVE');
     CREATE TYPE attendance_status AS ENUM ('HADIR', 'IZIN', 'SAKIT', 'ALPHA');
     CREATE TYPE score_source_type AS ENUM ('PROKER_COMMITTEE', 'MEETING_ATTENDANCE', 'MANUAL_ADJUSTMENT', 'PROKER', 'MEETING');
-    CREATE TYPE calendar_category AS ENUM ('PROKER', 'INTERNAL_MEETING', 'COMPETITION_DEADLINE', 'ORGANIZATION_HOLIDAY');
+    CREATE TYPE calendar_category AS ENUM ('PROKER', 'INTERNAL_MEETING', 'RBPL', 'COMPETITION_DEADLINE', 'ORGANIZATION_HOLIDAY');
 
     -- ERP Tables
     CREATE TABLE transactions (
@@ -211,7 +211,20 @@ export async function createTestDatabase() {
       location VARCHAR(140) NOT NULL,
       is_public BOOLEAN NOT NULL DEFAULT false,
       google_event_id VARCHAR(120),
+      created_by UUID REFERENCES kaders(id) ON DELETE SET NULL,
+      enable_qr_attendance BOOLEAN NOT NULL DEFAULT false,
+      points_per_attendance INTEGER NOT NULL DEFAULT 5,
+      qr_token VARCHAR(120) UNIQUE,
+      qr_is_open BOOLEAN NOT NULL DEFAULT false,
+      meeting_id UUID REFERENCES meetings(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE calendar_event_target_roles (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id UUID NOT NULL REFERENCES calendar_events(id) ON DELETE CASCADE,
+      role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+      CONSTRAINT idx_calendar_event_target_role_unique UNIQUE (event_id, role_id)
     );
 
     CREATE INDEX idx_transactions_status_date ON transactions (status, transaction_date);

@@ -186,7 +186,7 @@ describe("Milestone M1: Dynamic RBAC Suite", () => {
     expect(Array.isArray(json.data.roles)).toBe(true);
     expect(Array.isArray(json.data.modules)).toBe(true);
     expect(Array.isArray(json.data.matrix)).toBe(true);
-    expect(json.data.matrix.length).toBe(84); // 6 roles * 14 modules
+    expect(json.data.matrix.length).toBe(96); // 6 roles * 16 modules
   });
 
   it("6. Admin updates Staff permissions, and Staff permissions dynamically take effect", async () => {

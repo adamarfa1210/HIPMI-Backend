@@ -5,9 +5,13 @@ import {
   createCalendarEventSchema,
   updateCalendarEventSchema,
   calendarFilterSchema,
+  toggleCalendarQrStatusSchema,
 } from "./calendar.schema.js";
 import { authMiddleware, type AuthUser } from "../../middlewares/auth.middleware.js";
-import { rbacMiddleware } from "../../middlewares/rbac.middleware.js";
+import {
+  rbacMiddleware,
+  rbacAnyMiddleware,
+} from "../../middlewares/rbac.middleware.js";
 
 type Variables = {
   user: AuthUser;
@@ -29,9 +33,26 @@ publicCalendarRouter.get("/", async (c) => {
 // Internal Calendar (Authenticated & RBAC protected)
 calendarRouter.use("*", authMiddleware);
 
+calendarRouter.get(
+  "/roles",
+  rbacAnyMiddleware([
+    { moduleCode: "calendar", action: "read" },
+    { moduleCode: "calendar", action: "create" },
+    { moduleCode: "rbpl", action: "create" },
+  ]),
+  async (c) => {
+    const data = await calendarService.listSelectableRoles();
+    return c.json({
+      success: true,
+      data,
+    });
+  }
+);
+
 calendarRouter.get("/", rbacMiddleware("calendar", "read"), async (c) => {
   const query = calendarFilterSchema.parse(c.req.query());
-  const data = await calendarService.getEvents(query);
+  const user = c.get("user");
+  const data = await calendarService.getEvents(query, user);
 
   return c.json({
     success: true,
@@ -40,13 +61,53 @@ calendarRouter.get("/", rbacMiddleware("calendar", "read"), async (c) => {
   });
 });
 
+calendarRouter.get(
+  "/:id/attendance",
+  rbacMiddleware("calendar", "read"),
+  async (c) => {
+    const id = c.req.param("id")!;
+    const user = c.get("user");
+    const data = await calendarService.getEventAttendance(id, user);
+
+    return c.json({
+      success: true,
+      message: "Daftar hadir agenda berhasil dimuat",
+      data,
+    });
+  }
+);
+
+calendarRouter.patch(
+  "/:id/qr-status",
+  rbacMiddleware("calendar", "read"),
+  zValidator("json", toggleCalendarQrStatusSchema),
+  async (c) => {
+    const id = c.req.param("id")!;
+    const user = c.get("user");
+    const body = c.req.valid("json");
+    const data = await calendarService.toggleQrStatus(id, body.isOpen, user);
+
+    return c.json({
+      success: true,
+      message: data.qrIsOpen
+        ? "QR absensi dibuka"
+        : "QR absensi ditutup",
+      data,
+    });
+  }
+);
+
 calendarRouter.post(
   "/",
-  rbacMiddleware("calendar", "create"),
+  rbacAnyMiddleware([
+    { moduleCode: "calendar", action: "create" },
+    { moduleCode: "rbpl", action: "create" },
+  ]),
   zValidator("json", createCalendarEventSchema),
   async (c) => {
+    const user = c.get("user");
     const body = c.req.valid("json");
-    const created = await calendarService.createEvent(body);
+    const created = await calendarService.createEvent(body, user);
 
     return c.json(
       {
@@ -61,12 +122,18 @@ calendarRouter.post(
 
 calendarRouter.patch(
   "/:id",
-  rbacMiddleware("calendar", "update"),
+  rbacAnyMiddleware([
+    { moduleCode: "calendar", action: "update" },
+    { moduleCode: "calendar", action: "create" },
+    { moduleCode: "rbpl", action: "update" },
+    { moduleCode: "rbpl", action: "create" },
+  ]),
   zValidator("json", updateCalendarEventSchema),
   async (c) => {
     const id = c.req.param("id")!;
+    const user = c.get("user");
     const body = c.req.valid("json");
-    const updated = await calendarService.updateEvent(id, body);
+    const updated = await calendarService.updateEvent(id, body, user);
 
     return c.json({
       success: true,
@@ -76,13 +143,20 @@ calendarRouter.patch(
   }
 );
 
-calendarRouter.delete("/:id", rbacMiddleware("calendar", "delete"), async (c) => {
-  const id = c.req.param("id")!;
-  const data = await calendarService.deleteEvent(id);
+calendarRouter.delete(
+  "/:id",
+  rbacAnyMiddleware([
+    { moduleCode: "calendar", action: "delete" },
+    { moduleCode: "rbpl", action: "delete" },
+  ]),
+  async (c) => {
+    const id = c.req.param("id")!;
+    const user = c.get("user");
+    await calendarService.deleteEvent(id, user);
 
-  return c.json({
-    success: true,
-    message: "Agenda kalender berhasil dihapus",
-    data,
-  });
-});
+    return c.json({
+      success: true,
+      message: "Agenda kalender berhasil dihapus",
+    });
+  }
+);

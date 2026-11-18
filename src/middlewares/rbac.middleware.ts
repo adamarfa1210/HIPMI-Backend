@@ -22,7 +22,7 @@ const ACTION_COLUMN_MAP: Record<
   approve: "canApprove",
 };
 
-function isSuperadmin(user: AuthUser): boolean {
+export function isSuperadmin(user: AuthUser): boolean {
   return user.roleName === "Admin" || user.roleCode === "admin";
 }
 
@@ -89,6 +89,16 @@ async function checkPermission(
   }
 
   return { allowed: true };
+}
+
+export async function hasUserModulePermission(
+  user: AuthUser,
+  moduleCode: string,
+  action: PermissionAction
+): Promise<boolean> {
+  if (isSuperadmin(user)) return true;
+  const result = await checkPermission(user, moduleCode, action);
+  return result.allowed;
 }
 
 export const rbacMiddleware = (moduleCode: string, action: PermissionAction) => {
