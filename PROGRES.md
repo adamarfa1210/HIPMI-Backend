@@ -1,8 +1,8 @@
 # Catatan Progres Proyek
 ## HIPMI PT Telkom Integrated Management System, Headless CMS & Web UKM Profile
 
-**Tanggal Pembaruan:** 17 November 2026 (Sesi Sore)  
-**Status Keseluruhan:** **Seluruh Modul Operasional ERP (`/proker`, `/leaderboard`, `/keuangan/pengajuan`, `/keuangan`, `/kader`, `/kalender`, `/settings`), Fitur Berita HIPMI (Internal ERP + Web Profil UKM + Prioritas Urutan), Optimasi Upload Gambar WebP, dan Sidebar Fixed sudah selesai, terverifikasi, dan Live di Production.**
+**Tanggal Pembaruan:** 18 November 2026  
+**Status Keseluruhan:** **Seluruh Modul Operasional ERP, Fitur Berita HIPMI (Internal & Publik + Urutan Prioritas), Upload WebP, Sidebar Fixed, Import Kader NIM-Only + Pilihan Role, Halaman Onboarding Terkunci (`/lengkapi-akun`), Lupa Password, dan Modul Independen ACC Reset Password (`/reset-password`) sudah selesai, tersinkron di Supabase, dan Live di Production.**
 
 ---
 
@@ -58,18 +58,29 @@
 - **Perbaikan UI Sidebar ERP (`8470269`, `a96c41c`, `3fdf735`):**
   - Sidebar desktop pada [AppShell.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/components/AppShell.tsx) kini bertipe **fixed** (`lg:fixed lg:inset-y-0 lg:left-0`) dengan cardbox logo HIPMI terpasang tetap di atas dan cardbox akun terpasang tetap di bawah, sehingga hanya daftar modul di tengah yang dapat di-scroll dengan scrollbar tersembunyi (`.no-scrollbar` di [globals.css](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/app/globals.css)).
 
+### E. Segmen 5 — Import Massal NIM-Only + Pilihan Role, Onboarding Terkunci, Lupa Password, & ACC Reset Password (18 November 2026 — Selesai & Live)
+- **Import Massal Kader Khusus NIM + Pilihan Role (`6280f49`, `cc0699f`, `5c0e695`, `a808aaa`):**
+  - Parser [excel.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/utils/excel.ts), template CSV [kader.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/lib/kader.ts), [kader.routes.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/modules/kader/kader.routes.ts), [kader.service.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/modules/kader/kader.service.ts), dan [KaderModals.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/components/erp/KaderModals.tsx) disederhanakan menjadi cukup **1 kolom `NIM`** plus dropdown **Pilih Role** di pop-up import (`Admin`, `Topman`, `Kabid`, `Kadiv`, `Staff`, `Kader 1`; default `Kader 1`).
+  - NIM yang sudah ada otomatis di-**skip** (menjaga biodata & password lama aman), sedangkan NIM baru otomatis dibuat dengan **`Password = NIM`**, `profile_completed = false`, status `Aktif`, dan role sesuai dropdown.
+- **Deteksi `Password = NIM` & Halaman Khusus Terkunci (`/lengkapi-akun`):**
+  - [auth.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/db/schema/auth.ts) menambah `profile_completed` pada `kaders` (tersinkron ke Supabase).
+  - [auth.service.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/modules/auth/auth.service.ts) memverifikasi `bcrypt.compare(nim, passwordHash)` pada `login` & `getMe` untuk menghasilkan `onboardingMode` (`"complete-profile"` untuk import NIM baru vs `"reset-password"` untuk akun pasca ACC reset password vs `"none"`).
+  - [lengkapi-akun/page.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/app/lengkapi-akun/page.tsx), [AppShell.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/components/AppShell.tsx), [api.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/lib/api.ts), [auth.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/lib/auth.tsx), dan [page.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/app/page.tsx) mengunci penuh akses modul lain dan langsung mengarahkan ke `/lengkapi-akun` dengan field **NIM & Role Jabatan berstatus Read-Only**, plus validasi ketat password baru `!== NIM` di frontend maupun backend (`POST /api/auth/complete-onboarding` & `PATCH /api/auth/change-password`).
+- **Lupa Password & Modul Independen ACC Reset Password (`/reset-password`):**
+  - Menambah tabel `password_reset_requests` + enum `password_reset_status` (`PENDING`, `APPROVED`, `REJECTED`) di Supabase, endpoint publik `POST /api/auth/forgot-password` pada [login/page.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/app/login/page.tsx), router [password-reset.routes.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/modules/password-reset/password-reset.routes.ts) & [password-reset.service.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/modules/password-reset/password-reset.service.ts), serta halaman [reset-password/page.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/app/reset-password/page.tsx) lengkap dengan **badge jumlah permintaan pending** di sidebar.
+  - Modul `password-reset` (*ACC Reset Password*) ditambahkan ke [initial.seed.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/src/db/seeds/initial.seed.ts) dan [settings/page.tsx](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20ERP/src/app/settings/page.tsx) tanpa terikat role (non-Admin default `false`, dikontrol penuh lewat Settings Hak Akses; total **13 modul / 78 baris izin**). Saat **ACC**, password kader disetel menjadi `NIM` sehingga login berikutnya masuk mode `"reset-password"`.
+
 ---
 
 ## 3. Ringkasan Pengujian Terakhir yang Terverifikasi
 
-1. **Test Otomatis & Build Lokal (Sesi Terbaru):**
-   - Backend (`HIPMI PT TELKOM SISTEM`): `npm run build` (`tsc`) lulus; Vitest `tests/rbac.test.ts` + `tests/news.test.ts` lulus **`11/11`** (termasuk RBAC 72 matriks, isolasi tag penempatan berita, dan `PATCH /api/news/manage/reorder`). Suite Segmen 2–3 (`auth`, `kader`, `rbac`, `erp`, `cms`, `char-limits-boundaries`) sebelumnya lulus `6/6` file (`156/156` tests).
-   - Frontend ERP (`HIPMI ERP`): `npx tsc --noEmit` lulus, `node --test src/lib/api.test.mjs` lulus **`7/7`**, `npm run build` lulus (`15/15` static pages pada 13 rute termasuk `/berita`, `/berita/kelola`, `/settings`, `/proker`, `/leaderboard`, `/keuangan`, `/keuangan/pengajuan`, `/kader`, `/kalender`, `/cms`).
-   - Web UKM Profile (`hipmi-pt-telkom-web`): `npx tsc --noEmit` lulus, `npm run build` lulus (seluruh rute dynamic `ƒ` termasuk `/berita` & `/berita/[id]`), dan `node --test src/services/web-cycle.test.mjs` lulus **`1/1`** (termasuk verifikasi absennya `INFO TERKINI` & isolasi berita `INTERNAL` vs `PUBLIC`).
+1. **Test Otomatis & Build Lokal:**
+   - Backend (`HIPMI PT TELKOM SISTEM`): `npm run build` (`tsc`) lulus; Vitest `auth.test.ts`, `rbac.test.ts`, `kader.test.ts`, dan [password-reset.test.ts](file:///C:/Users/Adam%20Arfa/Documents/Project/Test%20Repo/HIPMI%20PT%20TELKOM%20SISTEM/tests/password-reset.test.ts) lulus **`4/4` file (`26/26` tests)** — serta `tests/kader.test.ts` lulus ulang **`9/9`** setelah penambahan `roleId` pada import massal; suite `rbac.test.ts` + `news.test.ts` sebelumnya lulus `11/11`.
+   - Frontend ERP (`HIPMI ERP`): `npx tsc --noEmit` lulus, `node --test src/lib/api.test.mjs` lulus **`7/7`**, `npm run build` lulus (**`17/17` static pages** pada 15 rute termasuk `/lengkapi-akun` dan `/reset-password`).
+   - Web UKM Profile (`hipmi-pt-telkom-web`): `npx tsc --noEmit` lulus, `npm run build` lulus (seluruh rute dynamic `ƒ` termasuk `/berita` & `/berita/[id]`), dan `node --test src/services/web-cycle.test.mjs` lulus **`1/1`**.
 2. **Pengujian Live Production (Chrome DevTools & Endpoint Probe):**
-   - Verifikasi isolasi tag berita (`INTERNAL` hanya di `/berita` ERP dan `404` di `/berita/[id]` UKM; `PUBLIC` tampil di `https://hipmipttelkom.vercel.app/berita`), penggeseran prioritas `#1`/`#2` via tombol `↑`/`↓` kiri list + persistensi setelah reload, dan pembersihan data uji kembali hingga `0` artikel uji.
-   - Uji upload foto nyata dari Notch ([IMG_4195.jpeg](file:///C:/Users/Adam%20Arfa/Downloads/IMG_4195.jpeg), `4032×2268 px`, `2,9 MB`) melalui `ImageCropperModal` → terkompresi menjadi `1920×1080 px` WebP (`234.490 bytes`), `POST /api/media/upload` (`201`), simpan berita baru (`201`), lalu dibersihkan kembali (`200`).
-   - Uji sidebar fixed di Chrome (`https://hipmi-pt-telkom-erp.vercel.app/settings`): `position: "fixed"`, scroll hanya pada kontainer modul (`scrollHeight: 755`, `clientHeight: 610`), `brandBox` (`top: 16`) & `accountBox` (`bottom: 750`) terkunci, dan `scrollbarWidth: "none"`.
+   - Uji berita (`INTERNAL` vs `PUBLIC`), tombol geser `↑`/`↓` kiri list, upload foto nyata [IMG_4195.jpeg](file:///C:/Users/Adam%20Arfa/Downloads/IMG_4195.jpeg) (`234.490 bytes` WebP `201`), serta sidebar desktop `position: "fixed"` dengan cardbox header/footer terkunci & scrollbar tersembunyi (`scrollbarWidth: "none"`).
+   - Uji alur penuh import NIM-only + penguncian `/lengkapi-akun` + Lupa Password + badge angka sidebar (`0 -> 1 -> 0`) + ACC Reset Password + mode `reset-password`, serta verifikasi dropdown role **`Staff`** saat import NIM `1209990002` yang tampil read-only (`disabled` & `readOnly`) di `/lengkapi-akun`. Data uji sementara sudah dihapus kembali (`total kaders remaining: 2`, `remaining pending: 0`).
 
 ---
 
