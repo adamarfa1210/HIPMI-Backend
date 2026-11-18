@@ -27,6 +27,12 @@ export const cadreStatusEnum = pgEnum("cadre_status", [
   "Alumni",
 ]);
 
+export const passwordResetStatusEnum = pgEnum("password_reset_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
+
 // 1. Roles Table
 export const roles = pgTable("roles", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -86,6 +92,7 @@ export const kaders = pgTable(
     interestCategory: cadreInterestEnum("interest_category").notNull(),
     status: cadreStatusEnum("status").default("Aktif").notNull(),
     totalScore: integer("total_score").default(0).notNull(),
+    profileCompleted: boolean("profile_completed").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -102,7 +109,32 @@ export const kaders = pgTable(
   })
 );
 
-// 5. Audit Logs Table
+// 5. Password Reset Requests Table
+export const passwordResetRequests = pgTable(
+  "password_reset_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kaderId: uuid("kader_id")
+      .references(() => kaders.id, { onDelete: "cascade" })
+      .notNull(),
+    nim: varchar("nim", { length: 20 }).notNull(),
+    status: passwordResetStatusEnum("status").default("PENDING").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    resolvedBy: uuid("resolved_by").references(() => kaders.id, {
+      onDelete: "set null",
+    }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    notes: varchar("notes", { length: 240 }),
+  },
+  (table) => ({
+    statusIdx: index("idx_password_reset_status").on(table.status),
+    nimIdx: index("idx_password_reset_nim").on(table.nim),
+  })
+);
+
+// 6. Audit Logs Table
 export const auditLogs = pgTable(
   "audit_logs",
   {

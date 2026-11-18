@@ -31,6 +31,12 @@ export async function createTestDatabase() {
       'Alumni'
     );
 
+    CREATE TYPE password_reset_status AS ENUM (
+      'PENDING',
+      'APPROVED',
+      'REJECTED'
+    );
+
     CREATE TABLE roles (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(60) NOT NULL UNIQUE,
@@ -70,8 +76,20 @@ export async function createTestDatabase() {
       interest_category cadre_interest NOT NULL,
       status cadre_status NOT NULL DEFAULT 'Aktif',
       total_score INTEGER NOT NULL DEFAULT 0,
+      profile_completed BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE password_reset_requests (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      kader_id UUID NOT NULL REFERENCES kaders(id) ON DELETE CASCADE,
+      nim VARCHAR(20) NOT NULL,
+      status password_reset_status NOT NULL DEFAULT 'PENDING',
+      requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      resolved_by UUID REFERENCES kaders(id) ON DELETE SET NULL,
+      resolved_at TIMESTAMPTZ,
+      notes VARCHAR(240)
     );
 
     CREATE TABLE audit_logs (

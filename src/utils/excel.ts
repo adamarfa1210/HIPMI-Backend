@@ -2,15 +2,6 @@ import * as xlsx from "xlsx";
 
 export interface KaderImportRow {
   nim: string;
-  fullName: string;
-  whatsappNumber: string;
-  prodi: string;
-  fakultas: string;
-  instagram?: string;
-  businessName?: string;
-  interestCategory: "Kompetisi" | "Punya Bisnis" | "Belum Punya Bisnis" | "Belum Punya Bisnis tapi Minat Kompetisi";
-  status: "Aktif" | "Non-Aktif" | "Alumni";
-  roleName?: string;
 }
 
 export function normalizeInterest(val?: string): "Kompetisi" | "Punya Bisnis" | "Belum Punya Bisnis" | "Belum Punya Bisnis tapi Minat Kompetisi" {
@@ -48,25 +39,9 @@ export function normalizeHeaders(row: Record<string, any>): KaderImportRow | nul
   };
 
   const nim = findVal("nim", "no induk", "nomor induk", "student id");
-  const fullName = findVal("nama lengkap", "nama", "full name", "fullname", "name");
-  const whatsappNumber = findVal("whatsapp", "no wa", "no whatsapp", "telepon", "phone", "whatsapp number");
-  const prodi = findVal("prodi", "program studi", "jurusan");
-  const fakultas = findVal("fakultas", "faculty");
+  if (!nim) return null;
 
-  if (!nim || !fullName) return null;
-
-  return {
-    nim,
-    fullName,
-    whatsappNumber: whatsappNumber || "081234567890",
-    prodi: prodi || "S1 Sistem Informasi",
-    fakultas: fakultas || "Fakultas Rekayasa Industri",
-    instagram: findVal("instagram", "ig", "username ig") || undefined,
-    businessName: findVal("bisnis", "nama bisnis", "usaha", "business", "business name") || undefined,
-    interestCategory: normalizeInterest(findVal("kategori minat", "minat", "interest", "interest category")),
-    status: normalizeStatus(findVal("status")),
-    roleName: findVal("role", "nama role", "role name") || undefined,
-  };
+  return { nim };
 }
 
 export function parseExcelOrCsv(buffer: Buffer): KaderImportRow[] {

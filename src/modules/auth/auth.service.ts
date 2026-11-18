@@ -1,12 +1,36 @@
 import bcrypt from "bcryptjs";
 import { eq, and } from "drizzle-orm";
 import { db } from "../../db/index.js";
-import { kaders, roles, modules, rolePermissions, auditLogs } from "../../db/schema/auth.js";
+import {
+  kaders,
+  roles,
+  modules,
+  rolePermissions,
+  auditLogs,
+  passwordResetRequests,
+} from "../../db/schema/auth.js";
 import { signAccessToken } from "../../utils/jwt.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import type { LoginInput, ChangePasswordInput } from "./auth.schema.js";
+import type {
+  LoginInput,
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  CompleteOnboardingInput,
+} from "./auth.schema.js";
+
+export type OnboardingMode = "none" | "complete-profile" | "reset-password";
 
 export class AuthService {
+  private async resolveOnboardingMode(
+    nim: string,
+    passwordHash: string,
+    profileCompleted: boolean
+  ): Promise<OnboardingMode> {
+    const passwordIsNim = await bcrypt.compare(nim, passwordHash);
+    if (!passwordIsNim) return "none";
+    return profileCompleted ? "reset-password" : "complete-profile";
+  }
+
   async login(input: LoginInput) {
     const cadreRecord = await db
       .select({
@@ -22,6 +46,7 @@ export class AuthService {
         interestCategory: kaders.interestCategory,
         status: kaders.status,
         totalScore: kaders.totalScore,
+        profileCompleted: kaders.profileCompleted,
         roleId: kaders.roleId,
         roleName: roles.name,
       })
@@ -45,6 +70,12 @@ export class AuthService {
     if (!isMatch) {
       throw new AppError(401, "UNAUTHORIZED", "NIM atau password salah");
     }
+
+    const onboardingMode = await this.resolveOnboardingMode(
+      cadre.nim,
+      cadre.passwordHash,
+      cadre.profileCompleted
+    );
 
     // Fetch permissions
     const perms = await db
@@ -86,6 +117,7 @@ export class AuthService {
       user: {
         ...safeUser,
         roleCode,
+        onboardingMode,
       },
       permissions: perms,
     };
@@ -96,6 +128,7 @@ export class AuthService {
       .select({
         id: kaders.id,
         nim: kaders.nim,
+        passwordHash: kaders.passwordHash,
         fullName: kaders.fullName,
         whatsappNumber: kaders.whatsappNumber,
         prodi: kaders.prodi,
@@ -105,6 +138,7 @@ export class AuthService {
         interestCategory: kaders.interestCategory,
         status: kaders.status,
         totalScore: kaders.totalScore,
+        profileCompleted: kaders.profileCompleted,
         roleId: kaders.roleId,
         roleName: roles.name,
       })
@@ -118,6 +152,12 @@ export class AuthService {
     }
 
     const cadre = cadreRecord[0];
+    const onboardingMode = await this.resolveOnboardingMode(
+      cadre.nim,
+      cadre.passwordHash,
+      cadre.profileCompleted
+    );
+    const { passwordHash: _, ...safeCadre } = cadre;
 
     const perms = await db
       .select({
@@ -135,7 +175,10 @@ export class AuthService {
       .where(eq(rolePermissions.roleId, cadre.roleId));
 
     return {
-      user: cadre,
+      user: {
+        ...safeCadre,
+        onboardingMode,
+      },
       role: {
         id: cadre.roleId,
         name: cadre.roleName,
@@ -163,6 +206,14 @@ export class AuthService {
       throw new AppError(400, "BAD_REQUEST", "Password lama salah");
     }
 
+    if (input.newPassword.trim() === cadre.nim) {
+      throw new AppError(
+        400,
+        "VALIDATION_ERROR",
+        "Password baru tidak boleh sama dengan NIM Anda"
+      );
+    }
+
     const newHash = await bcrypt.hash(input.newPassword, 10);
 
     await db
@@ -186,6 +237,132 @@ export class AuthService {
       success: true,
       message: "Password berhasil diperbarui",
     };
+  }
+
+  async requestForgotPassword(input: ForgotPasswordInput) {
+    const nim = input.nim.trim();
+    const cadre = await db.query.kaders.findFirst({
+      where: eq(kaders.nim, nim),
+    });
+
+    if (!cadre) {
+      throw new AppError(404, "NOT_FOUND", "NIM tidak terdaftar di sistem HIPMI PT Telkom");
+    }
+
+    if (cadre.status === "Non-Aktif") {
+      throw new AppError(
+        400,
+        "BAD_REQUEST",
+        "Akun dengan NIM ini berstatus Non-Aktif. Hubungi pengurus/admin."
+      );
+    }
+
+    const existingPending = await db
+      .select({ id: passwordResetRequests.id })
+      .from(passwordResetRequests)
+      .where(
+        and(
+          eq(passwordResetRequests.kaderId, cadre.id),
+          eq(passwordResetRequests.status, "PENDING")
+        )
+      )
+      .limit(1);
+
+    if (existingPending.length > 0) {
+      throw new AppError(
+        409,
+        "CONFLICT",
+        "Permintaan reset password untuk NIM ini sudah dikirim dan sedang menunggu ACC Admin."
+      );
+    }
+
+    const [created] = await db
+      .insert(passwordResetRequests)
+      .values({
+        kaderId: cadre.id,
+        nim: cadre.nim,
+        status: "PENDING",
+      })
+      .returning();
+
+    await db.insert(auditLogs).values({
+      actorKaderId: cadre.id,
+      action: "REQUEST_PASSWORD_RESET",
+      entityName: "password_reset_requests",
+      entityId: created.id,
+      metadata: { nim: cadre.nim },
+    });
+
+    return {
+      message:
+        "Permintaan reset password berhasil diajukan. Tunggu ACC Admin, lalu login menggunakan NIM sebagai password sementara.",
+      data: {
+        id: created.id,
+        nim: created.nim,
+        status: created.status,
+        requestedAt: created.requestedAt,
+      },
+    };
+  }
+
+  async completeOnboarding(userId: string, input: CompleteOnboardingInput) {
+    const cadre = await db.query.kaders.findFirst({
+      where: eq(kaders.id, userId),
+    });
+
+    if (!cadre) {
+      throw new AppError(404, "NOT_FOUND", "Pengguna tidak ditemukan");
+    }
+
+    const nextPassword = input.newPassword.trim();
+    if (nextPassword === cadre.nim) {
+      throw new AppError(
+        400,
+        "VALIDATION_ERROR",
+        "Password baru tidak boleh sama dengan NIM Anda"
+      );
+    }
+
+    const updates: Record<string, any> = {
+      passwordHash: await bcrypt.hash(nextPassword, 10),
+      profileCompleted: true,
+      updatedAt: new Date(),
+    };
+
+    if (!cadre.profileCompleted) {
+      if (
+        !input.fullName ||
+        !input.whatsappNumber ||
+        !input.prodi ||
+        !input.fakultas ||
+        !input.interestCategory
+      ) {
+        throw new AppError(
+          400,
+          "VALIDATION_ERROR",
+          "Lengkapi Nama Lengkap, WhatsApp, Prodi, Fakultas, dan Kategori Minat Bisnis terlebih dahulu"
+        );
+      }
+      updates.fullName = input.fullName;
+      updates.whatsappNumber = input.whatsappNumber;
+      updates.prodi = input.prodi;
+      updates.fakultas = input.fakultas;
+      updates.interestCategory = input.interestCategory;
+      if (input.instagram !== undefined) updates.instagram = input.instagram || null;
+      if (input.businessName !== undefined) updates.businessName = input.businessName || null;
+    }
+
+    await db.update(kaders).set(updates).where(eq(kaders.id, userId));
+
+    await db.insert(auditLogs).values({
+      actorKaderId: userId,
+      action: cadre.profileCompleted ? "COMPLETE_PASSWORD_RESET" : "COMPLETE_ONBOARDING",
+      entityName: "kaders",
+      entityId: userId,
+      metadata: { nim: cadre.nim },
+    });
+
+    return await this.getMe(userId);
   }
 }
 

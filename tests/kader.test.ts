@@ -219,38 +219,19 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     expect(csvText).toContain("Nama Lengkap");
   });
 
-  it("8. POST /api/kaders/import upserts spreadsheet: updates demographic fields while strictly preserving existing passwordHash and totalScore", async () => {
-    // Target cadre to test preservation
+  it("8. POST /api/kaders/import creates NIM-only new cadres (password = NIM, profileCompleted = false), skips existing NIMs, and requires onboarding", async () => {
     const existingTargetNim = "1201225555";
     const beforeRecord = await dbHelper.db.query.kaders.findFirst({
       where: eq(kaders.nim, existingTargetNim),
     });
     const originalPasswordHash = beforeRecord!.passwordHash;
+    const originalFullName = beforeRecord!.fullName;
     const originalScore = beforeRecord!.totalScore;
 
-    // Build spreadsheet with 1 existing (to update) and 1 new cadre
     const newCadreNim = "1201228888";
     const importRows = [
-      {
-        NIM: existingTargetNim,
-        "Nama Lengkap": "Kader Terupdate Via Excel",
-        WhatsApp: "081299998888",
-        Prodi: "S1 Sistem Informasi",
-        Fakultas: "Fakultas Rekayasa Industri",
-        "Kategori Minat": "Punya Bisnis",
-        Status: "Aktif",
-        Role: "Kader 1",
-      },
-      {
-        NIM: newCadreNim,
-        "Nama Lengkap": "Kader Baru Dari Excel",
-        WhatsApp: "081277776666",
-        Prodi: "S1 Teknik Industri",
-        Fakultas: "Fakultas Rekayasa Industri",
-        "Kategori Minat": "Kompetisi",
-        Status: "Aktif",
-        Role: "Kader 1",
-      },
+      { NIM: existingTargetNim },
+      { NIM: newCadreNim },
     ];
 
     const ws = xlsx.utils.json_to_sheet(importRows);
@@ -258,18 +239,15 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     xlsx.utils.book_append_sheet(wb, ws, "Import");
     const fileBuffer = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
 
-    // Send multipart form-data
     const formData = new FormData();
     const blob = new Blob([fileBuffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
-    formData.append("file", blob, "test-import.xlsx");
+    formData.append("file", blob, "test-import-nim.xlsx");
 
     const importRes = await app.request("/api/kaders/import", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-      },
+      headers: { Authorization: `Bearer ${adminToken}` },
       body: formData,
     });
 
@@ -277,23 +255,74 @@ describe("Milestone M1: Master Kader Management API Suite", () => {
     const importJson = await importRes.json();
     expect(importJson.success).toBe(true);
     expect(importJson.data.created).toBe(1);
-    expect(importJson.data.updated).toBe(1);
+    expect(importJson.data.skipped).toBe(1);
     expect(importJson.data.failed).toBe(0);
 
-    // CRITICAL INVARIANT: Verify existing cadre was updated but passwordHash and totalScore were preserved!
+    // Existing cadre must be untouched
     const afterRecord = await dbHelper.db.query.kaders.findFirst({
       where: eq(kaders.nim, existingTargetNim),
     });
-    expect(afterRecord!.fullName).toBe("Kader Terupdate Via Excel");
+    expect(afterRecord!.fullName).toBe(originalFullName);
     expect(afterRecord!.passwordHash).toBe(originalPasswordHash);
     expect(afterRecord!.totalScore).toBe(originalScore);
 
-    // Verify newly imported cadre was created
+    // Newly imported cadre defaults to profileCompleted=false and password=NIM
     const newlyCreated = await dbHelper.db.query.kaders.findFirst({
       where: eq(kaders.nim, newCadreNim),
     });
     expect(newlyCreated).toBeDefined();
-    expect(newlyCreated!.fullName).toBe("Kader Baru Dari Excel");
+    expect(newlyCreated!.profileCompleted).toBe(false);
+
+    const loginRes = await app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nim: newCadreNim, password: newCadreNim }),
+    });
+    expect(loginRes.status).toBe(200);
+    const loginJson = await loginRes.json();
+    expect(loginJson.data.user.onboardingMode).toBe("complete-profile");
+    const newCadreToken = loginJson.data.accessToken as string;
+
+    // Must reject newPassword === NIM
+    const samePassRes = await app.request("/api/auth/complete-onboarding", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${newCadreToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        newPassword: newCadreNim,
+        fullName: "Kader Onboarding",
+        whatsappNumber: "081277776666",
+        prodi: "S1 Teknik Industri",
+        fakultas: "Fakultas Rekayasa Industri",
+        interestCategory: "Kompetisi",
+      }),
+    });
+    expect(samePassRes.status).toBe(400);
+
+    // Complete onboarding cleanly
+    const completeRes = await app.request("/api/auth/complete-onboarding", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${newCadreToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        newPassword: "KaderSecurePassword1",
+        fullName: "Kader Onboarding Lengkap",
+        whatsappNumber: "081277776666",
+        prodi: "S1 Teknik Industri",
+        fakultas: "Fakultas Rekayasa Industri",
+        interestCategory: "Kompetisi",
+        instagram: "@kaderbaru",
+      }),
+    });
+    expect(completeRes.status).toBe(200);
+    const completeJson = await completeRes.json();
+    expect(completeJson.data.user.onboardingMode).toBe("none");
+    expect(completeJson.data.user.profileCompleted).toBe(true);
+    expect(completeJson.data.user.fullName).toBe("Kader Onboarding Lengkap");
   });
 
   it("8. GET /api/kaders/roles returns role options and POST /api/kaders/:id/reset-password resets cadre password", async () => {

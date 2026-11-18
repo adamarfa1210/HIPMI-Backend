@@ -24,6 +24,7 @@ export const DEFAULT_MODULES = [
   { code: "cms", label: "CMS Web Profile" },
   { code: "news", label: "Berita HIPMI (Konsumsi)" },
   { code: "news-manage", label: "Setting Berita (Kelola)" },
+  { code: "password-reset", label: "ACC Reset Password" },
   { code: "admin-rbac", label: "Admin Role Matrix & RBAC" },
 ];
 
@@ -134,8 +135,9 @@ export function getPermissionFlags(roleName: string, moduleCode: string): Permis
       }
       break;
 
+    case "password-reset":
     case "admin-rbac":
-      // All false for non-admin
+      // Unbound by role: non-admin flags start false and are configured dynamically via Settings Hak Akses
       break;
   }
 

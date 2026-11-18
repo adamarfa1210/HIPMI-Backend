@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { authService } from "./auth.service.js";
-import { loginSchema, changePasswordSchema } from "./auth.schema.js";
+import {
+  loginSchema,
+  changePasswordSchema,
+  forgotPasswordSchema,
+  completeOnboardingSchema,
+} from "./auth.schema.js";
 import { authMiddleware, type AuthUser } from "../../middlewares/auth.middleware.js";
 
 type Variables = {
@@ -40,3 +45,34 @@ authRouter.patch("/change-password", authMiddleware, zValidator("json", changePa
     message: result.message,
   });
 });
+
+// 4. POST /api/auth/forgot-password (Public request queued for Admin ACC)
+authRouter.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c) => {
+  const body = c.req.valid("json");
+  const result = await authService.requestForgotPassword(body);
+  return c.json(
+    {
+      success: true,
+      message: result.message,
+      data: result.data,
+    },
+    201
+  );
+});
+
+// 5. POST /api/auth/complete-onboarding (Complete profile & change default password != NIM)
+authRouter.post(
+  "/complete-onboarding",
+  authMiddleware,
+  zValidator("json", completeOnboardingSchema),
+  async (c) => {
+    const user = c.get("user");
+    const body = c.req.valid("json");
+    const result = await authService.completeOnboarding(user.id, body);
+    return c.json({
+      success: true,
+      message: "Akun berhasil dilengkapi dan password baru disimpan",
+      data: result,
+    });
+  }
+);

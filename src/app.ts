@@ -15,6 +15,7 @@ import { calendarRouter, publicCalendarRouter } from "./modules/calendar/calenda
 import { documentsRouter } from "./modules/documents/documents.routes.js";
 import { cmsRouter } from "./modules/cms/cms.routes.js";
 import { newsRouter, publicNewsRouter } from "./modules/news/news.routes.js";
+import { passwordResetRouter } from "./modules/password-reset/password-reset.routes.js";
 import { publicRouter } from "./modules/public/public.routes.js";
 import { mediaRouter } from "./modules/media/media.routes.js";
 import type { AuthUser } from "./middlewares/auth.middleware.js";
@@ -110,6 +111,7 @@ app.get("/uploads/*", async (c) => {
 // Route Mounting
 app.route("/api/auth", authRouter);
 app.route("/api/kaders", kaderRouter);
+app.route("/api/password-resets", passwordResetRouter);
 app.route("/api/admin/rbac", rbacRouter);
 app.route("/api/dashboard", dashboardRouter);
 app.route("/api/finance", financeRouter);

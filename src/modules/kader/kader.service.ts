@@ -305,83 +305,69 @@ export class KaderService {
   async importKaders(buffer: Buffer, actorKaderId: string) {
     const rows = parseExcelOrCsv(buffer);
     if (!rows.length) {
-      throw new AppError(400, "BAD_REQUEST", "File import kosong atau format kolom tidak sesuai");
+      throw new AppError(400, "BAD_REQUEST", "File import kosong atau kolom NIM tidak ditemukan");
     }
 
-    // Preload all roles to map roleName -> roleId
     const allRoles = await db.select().from(roles);
-    const roleMapByName = new Map(allRoles.map((r) => [r.name.toLowerCase(), r.id]));
-    const defaultRoleId = roleMapByName.get("kader 1") || allRoles[0].id;
+    const defaultRoleId =
+      allRoles.find((r) => r.name.toLowerCase() === "kader 1")?.id || allRoles[0].id;
 
     let created = 0;
-    let updated = 0;
+    let skipped = 0;
     let failed = 0;
     const errors: Array<{ row: number; nim?: string; error: string }> = [];
+    const seenInFile = new Set<string>();
 
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+      const nim = rows[i].nim.trim();
       try {
-        let targetRoleId = defaultRoleId;
-        if (row.roleName && roleMapByName.has(row.roleName.toLowerCase())) {
-          targetRoleId = roleMapByName.get(row.roleName.toLowerCase())!;
+        if (nim.length < 5 || nim.length > 20) {
+          throw new AppError(400, "VALIDATION_ERROR", "NIM harus 5–20 karakter");
         }
 
+        if (seenInFile.has(nim)) {
+          skipped++;
+          continue;
+        }
+        seenInFile.add(nim);
+
         const existing = await db.query.kaders.findFirst({
-          where: eq(kaders.nim, row.nim),
+          where: eq(kaders.nim, nim),
         });
 
         if (existing) {
-          // UPSERT: Update demographic fields, PRESERVING passwordHash and totalScore
-          await db
-            .update(kaders)
-            .set({
-              fullName: row.fullName,
-              whatsappNumber: row.whatsappNumber,
-              prodi: row.prodi,
-              fakultas: row.fakultas,
-              instagram: row.instagram || existing.instagram,
-              businessName: row.businessName || existing.businessName,
-              interestCategory: row.interestCategory,
-              status: row.status,
-              roleId: targetRoleId,
-              updatedAt: new Date(),
-            })
-            .where(eq(kaders.id, existing.id));
-
-          updated++;
-        } else {
-          // New Cadre: password default = nim
-          const initialPassword = row.nim;
-          const passwordHash = await bcrypt.hash(initialPassword, 10);
-
-          await db.insert(kaders).values({
-            roleId: targetRoleId,
-            nim: row.nim,
-            passwordHash,
-            fullName: row.fullName,
-            whatsappNumber: row.whatsappNumber,
-            prodi: row.prodi,
-            fakultas: row.fakultas,
-            instagram: row.instagram,
-            businessName: row.businessName,
-            interestCategory: row.interestCategory,
-            status: row.status,
-            totalScore: 0,
-          });
-
-          created++;
+          // Existing NIM: skip to keep active biodata & password untouched
+          skipped++;
+          continue;
         }
+
+        const passwordHash = await bcrypt.hash(nim, 10);
+
+        await db.insert(kaders).values({
+          roleId: defaultRoleId,
+          nim,
+          passwordHash,
+          fullName: `Kader ${nim}`,
+          whatsappNumber: "-",
+          prodi: "-",
+          fakultas: "-",
+          interestCategory: "Belum Punya Bisnis",
+          status: "Aktif",
+          totalScore: 0,
+          profileCompleted: false,
+        });
+
+        created++;
       } catch (err: any) {
         failed++;
         errors.push({
           row: i + 1,
-          nim: row.nim,
+          nim,
           error: err.message || "Unknown error",
         });
       }
     }
 
-    // Audit log
     await db.insert(auditLogs).values({
       actorKaderId,
       action: "IMPORT_CADRES",
@@ -390,7 +376,7 @@ export class KaderService {
       metadata: {
         totalProcessed: rows.length,
         created,
-        updated,
+        skipped,
         failed,
       },
     });
@@ -398,7 +384,8 @@ export class KaderService {
     return {
       totalProcessed: rows.length,
       created,
-      updated,
+      skipped,
+      updated: 0,
       failed,
       errors,
     };
